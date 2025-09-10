@@ -50,14 +50,18 @@ const JobsSchema = new mongoose.Schema({
   ],
 
   // Eligibility
-  eligibility: {
-    education: { type: String },                          
+eligibility: [
+  {
+    postName: { type: String, required: true },
+    education: { type: String },
     ageLimit: {
       min: { type: Number },
       max: { type: Number },
-      relaxation: { type: String }                         
+      relaxation: { type: String }
     }
-  },
+  }
+],
+
 
   // Application Fee
   applicationFee: {
