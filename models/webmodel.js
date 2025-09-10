@@ -22,7 +22,7 @@ const announcementSchema = new mongoose.Schema({
 const AnnouncementData = mongoose.model("announcement", announcementSchema);
 
 
-//Jobs Schemas
+//Jobs Schemasss
 
 
 const JobsSchema = new mongoose.Schema({
