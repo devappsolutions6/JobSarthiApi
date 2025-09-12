@@ -9,6 +9,9 @@ const userSchema = new mongoose.Schema({
 });
 const UserData = mongoose.model("users", userSchema);
 
+
+
+
 //  Announcement Schema
 const announcementSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -20,6 +23,25 @@ const announcementSchema = new mongoose.Schema({
 
 
 const AnnouncementData = mongoose.model("announcement", announcementSchema);
+
+
+
+//AdmitCard Schema
+
+
+const AdmitCardSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  releaseDate: { type: Date },
+  examDate: { type: Date },
+  category: { type: String }
+});
+
+const AdmitCardData = mongoose.model("AdmitCard", AdmitCardSchema);
+
+
+
+
 
 
 //Jobs Schemasss
@@ -102,4 +124,4 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 
 
-module.exports = { UserData, AnnouncementData, JobsSchemaDatas };
+module.exports = { UserData, AnnouncementData, JobsSchemaDatas, AdmitCardData};

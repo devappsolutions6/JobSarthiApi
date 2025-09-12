@@ -1,5 +1,5 @@
 const express = require("express");
-const { getUsers, getJobs, UserSignup, _getAnnouncemet, getJobById } = require('../controller/webController');
+const { getUsers, getJobs, UserSignup, _getAnnouncemet, getJobById, getAdmitCard } = require('../controller/webController');
 
 const router = express.Router();
 
@@ -7,6 +7,7 @@ const router = express.Router();
 router.get("/web/api/getUsers", getUsers);
 router.get("/web/api/getJobs", getJobs);
 router.get("/web/api/getJobs/:id", getJobById);  
+router.get("/web/api/getadmitcards",getAdmitCard);
 
 
 router.post("/web/api/signup", UserSignup)
