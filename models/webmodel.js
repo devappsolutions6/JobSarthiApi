@@ -42,7 +42,17 @@ const AdmitCardData = mongoose.model("AdmitCard", AdmitCardSchema);
 
 
 
+//Result Schena
 
+const ResultSchema = new mongoose.Schema({
+  title: {type: String, required: true},
+  description:{type: String, },
+  ReleaseDate:{type: Date, },
+  DownloadLink:{type: String,}
+})
+
+
+const ResultCardData = mongoose.model("result", ResultSchema);
 
 //Jobs Schemasss
 
@@ -124,4 +134,4 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 
 
-module.exports = { UserData, AnnouncementData, JobsSchemaDatas, AdmitCardData};
+module.exports = { UserData, AnnouncementData, JobsSchemaDatas, AdmitCardData, ResultCardData};

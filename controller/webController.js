@@ -1,5 +1,5 @@
 const { response } = require("express");
-const { UserData, AnnouncementData,JobsSchemaDatas, AdmitCardData } = require("../models/webmodel");
+const { UserData, AnnouncementData,JobsSchemaDatas, AdmitCardData, ResultCardData } = require("../models/webmodel");
 
 
 //  Get all Users
@@ -110,6 +110,19 @@ const getAdmitCard = async (req, res) => {
 };
 
 
+const getResultCard = async (req, res)=>{
+  try{
+  const result = await ResultCardData.find();
+  res.json({
+    message: "All Result Data",
+    data: result
+  })
+  }
+  catch(err){
+    res.status(500).json({erro: err.message})
+  }
+}
+
 
 
 module.exports = {
@@ -118,7 +131,8 @@ module.exports = {
   getJobById,
   UserSignup,
   _getAnnouncemet,
-  getAdmitCard
+  getAdmitCard,
+  getResultCard,
 };
 
 
