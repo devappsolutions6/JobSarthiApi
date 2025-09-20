@@ -13,5 +13,6 @@ router.get("/web/api/getresultcards", getResultCard)
 
 router.post("/web/api/signup", UserSignup)
 router.get("/web/api/announcement", _getAnnouncemet)
+ 
 
 module.exports = router;
