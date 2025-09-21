@@ -1,5 +1,5 @@
 const { response } = require("express");
-const { UserData, AnnouncementData,JobsSchemaDatas, AdmitCardData, ResultCardData } = require("../models/webmodel");
+const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData } = require("../models/webmodel");
 
 
 //  Get all Users
@@ -46,21 +46,39 @@ const UserSignup = async (req, res) => {
 
 
 
-//-getAnouncementData
+// getAnnouncementData
+const _getAnnouncement = async (req, res) => {
+  try {
+    const JobsData = await JobsSchemaDatas.find()
+      .sort({ startDate: -1 })
+      .limit(4)
+      .select('title');
 
+    const AdmitCardDataofJobs = await AdmitCardData.find()
+      .sort({ releaseDate: -1 })
+      .limit(4)
+      .select('title');
 
-const _getAnnouncemet  = async(req, res)=>{
-  try{
- const AnnouncementDataofJobs = await AnnouncementData.find()
+    const ResultDataofJobs = await ResultCardData.find()
+      .sort({ resultDate: -1 }) 
+      .limit(4)
+      .select('title');
 
- res.json({
-  message: 'Anouncement Data fetched Sucessfully',
-  data: AnnouncementDataofJobs
- })
-  }catch(err){
-    res.json(err)
+    const AllAnnouncementData = [
+      ...JobsData,
+      ...AdmitCardDataofJobs,
+      ...ResultDataofJobs,
+    ];
+
+    res.status(200).json({
+      message: "Announcement Data fetched successfully",
+      data: AllAnnouncementData,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-}
+};
+
 
 
 
@@ -76,8 +94,10 @@ const getJobs = async (req, res) => {
   }
 };
 
+
+
 // 2. Single Job by ID
-// Get Single Job by _id
+//
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;   // yaha _id aa raha hai
@@ -130,7 +150,7 @@ module.exports = {
   getJobs,
   getJobById,
   UserSignup,
-  _getAnnouncemet,
+  _getAnnouncement,
   getAdmitCard,
   getResultCard,
 };
