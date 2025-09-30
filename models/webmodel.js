@@ -132,6 +132,26 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 
 
+const YourJobsSchema =  new mongoose.Schema({
+   userId: { type: mongoose.Schema.Types.ObjectId, ref: "userauth", required: true },
+  education: {type: String},
+  DoB: {type: Date}
+})
 
 
-module.exports = { UserData, AnnouncementData, JobsSchemaDatas, AdmitCardData, ResultCardData};
+const YourJobsSchemaDatas = mongoose.model('userJobsDetails', YourJobsSchema)
+
+
+
+
+
+
+
+module.exports = { 
+  UserData, 
+  AnnouncementData, 
+  JobsSchemaDatas,
+   AdmitCardData,
+   ResultCardData, 
+  YourJobsSchemaDatas
+};

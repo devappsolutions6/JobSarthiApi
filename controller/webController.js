@@ -1,5 +1,8 @@
 const { response } = require("express");
-const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData } = require("../models/webmodel");
+const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData, YourJobsSchemaDatas } = require("../models/webmodel");
+const connectDb = require("../config/db");
+
+
 
 
 //  Get all Users
@@ -145,7 +148,36 @@ const getResultCard = async (req, res)=>{
 
 
 
+const YourJobsController = async (req, res) => {
+ 
+
+  try {
+     const YourData = {
+       userId: req.body.userId,
+      education : req.body.education,
+      DoB: req.body.DoB,
+     }
+
+    const myData = await YourJobsSchemaDatas.create(YourData);
+
+    res.json({
+      message: "Data is inserted successfully",
+       insertedId: myData._id,
+    
+    });
+  }            catch (err) {
+    res.status(500).json({
+      message: "Something went wrong",
+      error: err.message,
+    });
+  }
+};
+
+
+
+
 module.exports = {
+  YourJobsController, 
   getUsers,
   getJobs,
   getJobById,

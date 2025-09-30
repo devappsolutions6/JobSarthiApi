@@ -1,5 +1,6 @@
 const express = require("express");
-const { getUsers, getJobs, UserSignup, _getAnnouncement, getJobById, getAdmitCard, getResultCard } = require('../controller/webController');
+const { getUsers, getJobs, UserSignup, YourJobsController, _getAnnouncement, getJobById, getAdmitCard, getResultCard } = require('../controller/webController');
+
 
 const router = express.Router();
 
@@ -13,6 +14,8 @@ router.get("/web/api/getresultcards", getResultCard)
 
 router.post("/web/api/signup", UserSignup)
 router.get("/web/api/announcement", _getAnnouncement)
+
+router.post("/web/api/userjobsDetails", YourJobsController)
  
 
 module.exports = router; 
