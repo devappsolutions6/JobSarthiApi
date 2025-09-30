@@ -54,9 +54,9 @@ const ResultSchema = new mongoose.Schema({
 
 const ResultCardData = mongoose.model("result", ResultSchema);
 
+
+
 //Jobs Schemasss
-
-
 const JobsSchema = new mongoose.Schema({
   // Basic Info
   title: { type: String, required: true },                  

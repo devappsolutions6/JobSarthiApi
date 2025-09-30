@@ -1,6 +1,6 @@
 const { response } = require("express");
 const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData, YourJobsSchemaDatas } = require("../models/webmodel");
-const connectDb = require("../config/db");
+
 
 
 
@@ -100,10 +100,10 @@ const getJobs = async (req, res) => {
 
 
 // 2. Single Job by ID
-//
+
 const getJobById = async (req, res) => {
   try {
-    const { id } = req.params;   // yaha _id aa raha hai
+    const { id } = req.params;   
     console.log("Fetching job by _id:", id);
 
     const job = await JobsSchemaDatas.findById(id);
@@ -148,31 +148,40 @@ const getResultCard = async (req, res)=>{
 
 
 
+
+// Your Jobs
+
 const YourJobsController = async (req, res) => {
- 
-
   try {
-     const YourData = {
-       userId: req.body.userId,
-      education : req.body.education,
-      DoB: req.body.DoB,
-     }
+    const { userId, education, DoB } = req.body;
 
-    const myData = await YourJobsSchemaDatas.create(YourData);
+   
+    const UserExist = await YourJobsSchemaDatas.findOne({ userId });
 
-    res.json({
-      message: "Data is inserted successfully",
-       insertedId: myData._id,
-    
+    if (UserExist) {
+      return res.status(200).json({
+        message: "User has already submitted data",
+      });
+    }
+
+   
+    const myData = await YourJobsSchemaDatas.create({
+      userId,
+      education,
+      DoB,
     });
-  }            catch (err) {
+
+    return res.status(201).json({
+      message: "Data is inserted successfully",
+      insertedId: myData._id,
+    });
+  } catch (err) {
     res.status(500).json({
       message: "Something went wrong",
       error: err.message,
     });
   }
 };
-
 
 
 
