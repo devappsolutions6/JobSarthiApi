@@ -57,74 +57,152 @@ const ResultCardData = mongoose.model("result", ResultSchema);
 
 
 //Jobs Schemasss
-const JobsSchema = new mongoose.Schema({
-  // Basic Info
-  title: { type: String, required: true },                  
-  JobId: { type: Number, required: true, unique: true },    
-  JobCategory: { type: String, required: true },           
-  description: { type: String },                            
-
-  // Vacancy Details
-  TotalPost: { type: Number, required: true },              
-  vacancies: [
-    {
-      postName: { type: String, required: true },         
-      total: { type: Number, required: true },              
-      categoryWise: {
-        general: { type: Number, default: 0 },
-        obc: { type: Number, default: 0 },
-        sc: { type: Number, default: 0 },
-        st: { type: Number, default: 0 },
-        ews: { type: Number, default: 0 },
-        female: { type: Number, default: 0 }
-      }
-    }
-  ],
-
-  // Eligibility
-eligibility: [
+const JobsSchema = new mongoose.Schema(
   {
-    postName: { type: String, required: true },
-    education: { type: String },
-    ageLimit: {
-      min: { type: Number },
-      max: { type: Number },
-      relaxation: { type: String }
-    }
-  }
-],
+   
+    title: { type: String, required: true },
+    JobId: { type: Number, required: true, unique: true },
+    department: { type: String, required: true }, // "Staff Selection Commission"
+    organizationType: {
+      type: String,
+      enum: [
+        "Central Government",
+        "State Government",
+        "Defence",
+        "Railway",
+        "Banking",
+        "PSU",
+        "Police",
+        "Teaching",
+        "Engineering",
+        "Medical",
+        "Other",
+      ],
+      required: true,
+    },
+    description: { type: String },
+    location: { type: String, default: "All India" },
+    isActive: { type: Boolean, default: true },
 
+    // 🧾 Vacancy Details
+    TotalPost: { type: Number, required: true },
+    vacancies: [
+      {
+        postName: { type: String, required: true },
+        total: { type: Number, required: true },
+        categoryWise: {
+          general: { type: Number, default: 0 },
+          obc: { type: Number, default: 0 },
+          sc: { type: Number, default: 0 },
+          st: { type: Number, default: 0 },
+          ews: { type: Number, default: 0 },
+          female: { type: Number, default: 0 },
+        },
+      },
+    ],
 
-  // Application Fee
-  applicationFee: {
-    general: { type: Number, default: 0 },
-    obc: { type: Number, default: 0 },
-    sc: { type: Number, default: 0 },
-    st: { type: Number, default: 0 },
-    female: { type: Number, default: 0 }
+    // 📚 Eligibility (Smart Filtering Basis)
+    eligibility: [
+      {
+        postName: { type: String, required: true },
+        education: {
+          level: {
+            type: String,
+            enum: [
+              "10th Pass",
+              "12th Pass",
+              "ITI",
+              "Diploma",
+              "Graduate",
+              "Post Graduate",
+              "B.Tech",
+              "M.Tech",
+              "MBBS",
+              "Other",
+            ],
+            required: true,
+          },
+          stream: { type: String }, // "Science", "Arts", "Commerce", etc.
+          specialization: { type: String }, // "Computer Science", "Civil Engg"
+        },
+        ageLimit: {
+          min: { type: Number },
+          max: { type: Number },
+          relaxation: { type: String }, // "SC/ST +5 yrs, OBC +3 yrs"
+        },
+        allowedCategories: [
+          { type: String, enum: ["GEN", "OBC", "SC", "ST", "EWS", "Female"] },
+        ],
+        experience: { type: String, default: "Fresher" },
+      },
+    ],
+
+    // 💰 Application Fee
+    applicationFee: {
+      general: { type: Number, default: 0 },
+      obc: { type: Number, default: 0 },
+      sc: { type: Number, default: 0 },
+      st: { type: Number, default: 0 },
+      female: { type: Number, default: 0 },
+    },
+
+    // 🗓️ Important Dates
+    importantDates: {
+      startDate: { type: Date, required: true },
+      endDate: { type: Date },
+      lastDate: { type: Date, required: true },
+      examDate: { type: Date },
+      admitCardDate: { type: Date },
+      resultDate: { type: Date },
+    },
+
+    // ⚙️ Selection Process & Pay
+    selectionProcess: { type: String },
+    salary: { type: String },
+    syllabusLink: { type: String },
+
+    // 🌐 Official Links
+    officialNotification: { type: String },
+    applyOnlineLink: { type: String },
+    moreDetailsLink: { type: String, required: true },
+
+    // 🧩 Smart Meta Tags for Recommendation
+    metaTags: [
+      {
+        type: String,
+        index: true,
+      },
+    ],
+    // Examples: ["12th Pass", "Uttar Pradesh", "Police", "Male", "OBC", "Central Govt", "Defence"]
+
+    // 🔍 AI/Filter Optimization Fields
+    searchKeywords: {
+      type: [String],
+      index: true,
+      default: [],
+    }, // for full-text or fuzzy search (like "SSC", "Railway", "UP Police")
+
+    // ⭐ User Preference Based Fields
+    preferences: {
+      preferredGender: { type: String, enum: ["Male", "Female", "Any"], default: "Any" },
+      preferredState: { type: String, default: "All India" },
+      preferredCategory: { type: String, enum: ["GEN", "OBC", "SC", "ST", "EWS"], default: "GEN" },
+      preferredEducation: { type: String },
+    },
   },
+  { timestamps: true }
+);
 
-  // Important Dates
-  importantDates: {
-    startDate: { type: Date, required: true },             
-    endDate: { type: Date },                               
-    lastDate: { type: Date, required: true },             
-    examDate: { type: Date },                              
-    admitCardDate: { type: Date },                       
-    resultDate: { type: Date }                           
-  },
+// 🧠 Text Index for Faster Search (MongoDB optimization)
+JobsSchema.index({
+  title: "text",
+  description: "text",
+  "eligibility.education.level": "text",
+  metaTags: "text",
+  searchKeywords: "text",
+});
 
-  // Other Info
-  selectionProcess: { type: String },                     
-  salary: { type: String },                               
-  syllabusLink: { type: String },                         
 
-  // Official Links
-  officialNotification: { type: String },                  
-  applyOnlineLink: { type: String },                       
-  moreDetailsLink: { type: String, required: true },       
-
-}, { timestamps: true });
 
 
 const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
