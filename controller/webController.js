@@ -1,5 +1,6 @@
 const { response } = require("express");
-const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData, YourJobsSchemaDatas } = require("../models/webmodel");
+const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData, YourJobsSchemaDatas, FilterJobsSchema, UserSignupSchemaDatas } = require("../models/webmodel");
+const bcrypt = require("bcryptjs");
 
 
 
@@ -185,6 +186,74 @@ const YourJobsController = async (req, res) => {
 
 
 
+//Filter Jobs For The users
+
+
+const FilterJobsController = async (req, res)=>{
+  try{
+    const UserData = await YourJobsSchemaDatas.find();
+
+   
+    const JobsData = await JobsSchemaDatas.find()
+
+
+
+
+    console.log(JobsData)
+
+    res.json({
+      message: 'Data fetch sucessfully',
+      data: JobsData
+    })
+
+    
+
+  }
+  catch(err){
+    return res.send('Not Get the data ', err)
+  }
+}
+
+
+// user Singnup Api
+
+
+const userSignupController = async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // ✅ Check if user already exists
+    const existingUser = await UserSignupSchemaDatas.findOne({ Email: email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // ✅ Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new UserSignupSchemaDatas({
+      FirstName: firstName,
+      LastName: lastName,
+      Email: email,
+      Password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ message: "Account created successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error });
+  }};
+
+
+
+
+
 module.exports = {
   YourJobsController, 
   getUsers,
@@ -194,6 +263,9 @@ module.exports = {
   _getAnnouncement,
   getAdmitCard,
   getResultCard,
+  FilterJobsController,
+  userSignupController
+
 };
 
 

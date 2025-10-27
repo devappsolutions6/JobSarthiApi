@@ -223,6 +223,18 @@ const YourJobsSchemaDatas = mongoose.model('userJobsDetails', YourJobsSchema)
 
 
 
+// user Singnup Api
+
+const UserSignupSchema = new mongoose.Schema({
+  FirstName: { type: String, required: true },
+  LastName: { type: String, required: true },
+  Email: { type: String, required: true, unique: true },
+  Password: { type: String, required: true },
+});
+
+const UserSignupSchemaDatas = mongoose.model("accounts", UserSignupSchema);
+
+
 
 
 module.exports = { 
@@ -231,5 +243,5 @@ module.exports = {
   JobsSchemaDatas,
    AdmitCardData,
    ResultCardData, 
-  YourJobsSchemaDatas
+  YourJobsSchemaDatas,UserSignupSchemaDatas
 };
