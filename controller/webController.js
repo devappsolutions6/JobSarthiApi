@@ -277,7 +277,7 @@ const FilterJobsController = async (req, res)=>{
     await transporter.sendMail(mailOptions);
 
     res.status(201).json({
-      message: "Account created successfully! Please check your email to verify your account.",
+      message: "Account created successfull.. Please check your email to verify your account.",
     });
   } catch (error) {
     console.error(error);
