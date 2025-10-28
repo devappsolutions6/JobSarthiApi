@@ -1,6 +1,8 @@
 const { response } = require("express");
 const { UserData, JobsSchemaDatas, AdmitCardData, ResultCardData, YourJobsSchemaDatas, FilterJobsSchema, UserSignupSchemaDatas } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 
 
 
@@ -218,7 +220,9 @@ const FilterJobsController = async (req, res)=>{
 // user Singnup Api
 
 
-const userSignupController = async (req, res) => {
+
+
+ const userSignupController = async (req, res) => {
   try {
     const { firstName, lastName, email, password } = req.body;
 
@@ -226,29 +230,61 @@ const userSignupController = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // ✅ Check if user already exists
     const existingUser = await UserSignupSchemaDatas.findOne({ Email: email });
+
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // ✅ Hash password before saving
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create verification token
+    const verificationToken = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     const newUser = new UserSignupSchemaDatas({
       FirstName: firstName,
       LastName: lastName,
       Email: email,
       Password: hashedPassword,
+      verificationToken,
     });
 
     await newUser.save();
 
-    res.status(201).json({ message: "Account created successfully" });
+    // Send verification email
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER, // your gmail
+        pass: process.env.EMAIL_PASS, // app password
+      },
+    });
+
+    const verifyUrl = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Verify Your Email - StudyLoom",
+      html: `
+        <h3>Hello ${firstName},</h3>
+        <p>Thank you for registering! Please verify your email by clicking the link below:</p>
+        <a href="${verifyUrl}" target="_blank" style="color:#1a73e8">Verify Email</a>
+        <p>This link will expire in 24 hours.</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({
+      message: "Account created successfully! Please check your email to verify your account.",
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error", error });
-  }};
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 
 
 

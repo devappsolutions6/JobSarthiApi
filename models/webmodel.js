@@ -230,7 +230,10 @@ const UserSignupSchema = new mongoose.Schema({
   LastName: { type: String, required: true },
   Email: { type: String, required: true, unique: true },
   Password: { type: String, required: true },
+  isVerified: { type: Boolean, default: false },
+  verificationToken: { type: String },
 });
+ 
 
 const UserSignupSchemaDatas = mongoose.model("accounts", UserSignupSchema);
 

@@ -1,5 +1,6 @@
 const express = require("express");
 const { getUsers, getJobs, UserSignup, YourJobsController, _getAnnouncement, getJobById, getAdmitCard, getResultCard, FilterJobsController, UserSingnupController, userSignupController } = require('../controller/webController');
+const { verifyEmailController } = require("../controller/verifyEmailController");
 
 
 const router = express.Router();
@@ -19,7 +20,9 @@ router.post("/web/api/userjobsDetails", YourJobsController)
 
 router.get("/web/api/getFilterJobs", FilterJobsController)
 
+
 router.post("/web/api/userSignup", userSignupController);
+router.get("/web/api/verify-email", verifyEmailController);
  
 
 module.exports = router; 
