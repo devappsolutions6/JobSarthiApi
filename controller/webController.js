@@ -265,7 +265,7 @@ const FilterJobsController = async (req, res)=>{
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: "Verify Your Email - StudyLoom",
+      subject: "Verify Your Email - Jobsarthi",
       html: `
         <h3>Hello ${firstName},</h3>
         <p>Thank you for registering! Please verify your email by clicking the link below:</p>
