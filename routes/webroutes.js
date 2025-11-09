@@ -1,5 +1,5 @@
 const express = require("express");
-const { getUsers, getJobs, UserSignup, YourJobsController, _getAnnouncement, getJobById, getAdmitCard, getResultCard, FilterJobsController, UserSingnupController, userSignupController } = require('../controller/webController');
+const { getUsers, getJobs, UserSignup, YourJobsController, _getAnnouncement, getJobById, getAdmitCard, getResultCard, FilterJobsController, UserSingnupController, userSignupController, userLoginController } = require('../controller/webController');
 const { verifyEmailController } = require("../controller/verifyEmailController");
 
 
@@ -21,7 +21,9 @@ router.post("/web/api/userjobsDetails", YourJobsController)
 router.get("/web/api/getFilterJobs", FilterJobsController)
 
 
-router.post("/web/api/userSignup", userSignupController);
+const { signupLimiter, loginLimiter } = require('../middleware/rateLimiter');
+router.post("/web/api/userSignup", signupLimiter, userSignupController);
+router.post("/web/api/login", loginLimiter, userLoginController);
 router.get("/web/api/verify-email", verifyEmailController);
  
 
