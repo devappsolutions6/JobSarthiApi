@@ -10,6 +10,8 @@ const app = express();
 
 // Middleware
 app.use(express.json());
+// Parse URL-encoded bodies (for form submissions)
+app.use(express.urlencoded({ extended: true }));
 
 // ✅ CORS Middleware
 app.use(cors({

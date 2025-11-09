@@ -158,7 +158,8 @@ const getResultCard = async (req, res)=>{
 
 const YourJobsController = async (req, res) => {
   try {
-    const { userId, education, DoB } = req.body;
+    const body = req.body || {};
+    const { userId, education, DoB } = body;
 
    
     const UserExist = await YourJobsSchemaDatas.findOne({ userId });
@@ -227,7 +228,8 @@ const FilterJobsController = async (req, res)=>{
 const userSignupController = async (req, res) => {
   try {
     // 1. Sanitize and validate input
-    const { firstName, lastName, email, password } = req.body;
+    const body = req.body || {};
+    const { firstName, lastName, email, password } = body;
     
     // Remove any unwanted characters and trim whitespace
     const sanitizedFirstName = firstName?.trim();
@@ -342,7 +344,9 @@ const userSignupController = async (req, res) => {
 // user Login Api
 const userLoginController = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const body = req.body || {};
+    const email = body.email;
+    const password = body.password;
 
     if (!email || !password) {
       return res.status(400).json({ status: 'error', message: 'Email and password are required' });
