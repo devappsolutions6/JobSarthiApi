@@ -410,6 +410,38 @@ const userLoginController = async (req, res) => {
 };
 
 
+// Get User Profile Details
+const profileController = async (req, res) => {
+  try {
+    // auth middleware should attach user to req.user
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: 'Not authenticated' });
+
+    const safeUser = {
+      id: user._id,
+      firstName: user.FirstName,
+      lastName: user.LastName,
+      email: user.Email,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin || null,
+    };
+
+    return res.status(200).json({ user: safeUser });
+  } catch (err) {
+    console.error('Profile error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+// Get User Profile Details
+
+
+
+
 
 module.exports = {
   YourJobsController, 
@@ -423,6 +455,7 @@ module.exports = {
   FilterJobsController,
   userSignupController,
   userLoginController
+  ,profileController
 
 };
 

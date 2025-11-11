@@ -22,9 +22,13 @@ router.get("/web/api/getFilterJobs", FilterJobsController)
 
 
 const { signupLimiter, loginLimiter } = require('../middleware/rateLimiter');
+const authMiddleware = require('../middleware/auth');
+const { profileController } = require('../controller/webController');
+
 router.post("/web/api/userSignup", signupLimiter, userSignupController);
 router.post("/web/api/login", loginLimiter, userLoginController);
 router.get("/web/api/verify-email", verifyEmailController);
+router.get('/web/api/user/profile', authMiddleware, profileController);
  
 
 module.exports = router; 
