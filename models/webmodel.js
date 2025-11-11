@@ -1,16 +1,6 @@
 const { application } = require("express");
 const mongoose = require("mongoose");
 
-// ✅ User Schema
-const userSchema = new mongoose.Schema({
-  Name: { type: String, required: true },
-  Email: { type: String, required: true },
-  Mobile: { type: Number, required: true },
-});
-const UserData = mongoose.model("users", userSchema);
-
-
-
 
 //  Announcement Schema
 const announcementSchema = new mongoose.Schema({
@@ -21,13 +11,11 @@ const announcementSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 
-
 const AnnouncementData = mongoose.model("announcement", announcementSchema);
 
 
 
 //AdmitCard Schema
-
 
 const AdmitCardSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -50,7 +38,6 @@ const ResultSchema = new mongoose.Schema({
   ReleaseDate:{type: Date, },
   DownloadLink:{type: String,}
 })
-
 
 const ResultCardData = mongoose.model("result", ResultSchema);
 
@@ -201,23 +188,7 @@ JobsSchema.index({
   metaTags: "text",
   searchKeywords: "text",
 });
-
-
-
-
 const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
-
-
-
-
-const YourJobsSchema =  new mongoose.Schema({
-   userId: { type: mongoose.Schema.Types.ObjectId, ref: "userauth", required: true },
-  education: {type: String},
-  DoB: {type: Date}
-})
-
-
-const YourJobsSchemaDatas = mongoose.model('userJobsDetails', YourJobsSchema)
 
 
 
@@ -240,11 +211,104 @@ const UserSignupSchemaDatas = mongoose.model("accounts", UserSignupSchema);
 
 
 
+
+
+
+// all  Data of the user for jobs filtering
+
+const UserDataSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "accounts",
+      required: true,
+      index: true,
+    },
+
+    // 🎓 Education Info
+    educationLevel: {
+      type: String,
+      enum: [
+        "10th Pass",
+        "12th Pass",
+        "ITI",
+        "Diploma",
+        "Graduate",
+        "Post Graduate",
+        "B.Tech",
+        "M.Tech",
+        "MBBS",
+        "Other",
+      ],
+    },
+    educationStream: { type: String },
+    educationSpecialization: { type: String },
+
+    // 🌍 Location & Category Preferences
+    preferredState: { type: String, default: "All India" },
+    category: {
+      type: String,
+      enum: ["GEN", "OBC", "SC", "ST", "EWS"],
+      default: "GEN",
+    },
+    gender: {
+      type: String,
+      enum: ["Male", "Female", "Any"],
+      default: "Any",
+    },
+
+    // 🧾 Job Preferences
+    organizationType: {
+      type: String,
+      enum: [
+        "Central Government",
+        "State Government",
+        "Defence",
+        "Railway",
+        "Banking",
+        "PSU",
+        "Police",
+        "Teaching",
+        "Engineering",
+        "Medical",
+        "Other",
+      ],
+      default: "Central Government",
+    },
+    department: { type: String },
+    experience: { type: String, default: "Fresher" },
+
+    // 🔍 Smart Tag or Keyword Preferences
+    interests: {
+      type: [String],
+      default: [],
+      index: true,
+    }, // e.g. ["SSC", "UP Police", "Banking"]
+
+    // Optional future AI optimization fields
+    aiProfileScore: { type: Number, default: 0 }, // personalized match score
+    lastUpdated: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+
+
+
+
+const userDataSchemasDatas = mongoose.model("userData", UserDataSchema);
+
+
+
+
+
+
 module.exports = { 
-  UserData, 
+ 
   AnnouncementData, 
   JobsSchemaDatas,
    AdmitCardData,
-   ResultCardData, 
-  YourJobsSchemaDatas,UserSignupSchemaDatas
+   ResultCardData
+   ,UserSignupSchemaDatas,
+  userDataSchemasDatas
 };
