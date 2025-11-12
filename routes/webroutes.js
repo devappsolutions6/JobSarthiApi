@@ -31,8 +31,9 @@ const authMiddleware = require("../middleware/auth");
 const { profileController } = require("../controller/webController");
 
 router.post("/web/api/userSignup", signupLimiter, userSignupController);
-router.post("/web/api/login", loginLimiter, userLoginController);
 router.get("/web/api/verify-email", verifyEmailController);
+router.post("/web/api/login", loginLimiter, userLoginController);
+
 router.get("/web/api/user/profile", authMiddleware, profileController);
 router.post("/web/api/user/jobs", userDataController);
 

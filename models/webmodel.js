@@ -198,7 +198,7 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 const UserSignupSchema = new mongoose.Schema({
   FirstName: { type: String, required: true },
-  LastName: { type: String, required: true },
+  LastName: { type: String},
   Email: { type: String, required: true, unique: true },
   Password: { type: String, required: true },
   isVerified: { type: Boolean, default: false },

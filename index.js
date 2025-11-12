@@ -13,9 +13,15 @@ app.use(express.json());
 // Parse URL-encoded bodies (for form submissions)
 app.use(express.urlencoded({ extended: true }));
 
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+
+];
+
 // ✅ CORS Middleware
 app.use(cors({
-  origin: "*", // sab jagah se allow karega (frontend ka URL yaha daalna best practice hai)
+  origin: allowedOrigins,
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
