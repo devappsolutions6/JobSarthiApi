@@ -26,12 +26,12 @@ const verifyEmailController = async (req, res) => {
     );
 
     // ✅ Set secure cookie
-//  res.cookie("token", authToken, {
-//   httpOnly: true,
-//   secure: true, // if using https locally; false if not
-//   sameSite: "none",
-//   maxAge: 7 * 24 * 60 * 60 * 1000,
-// });
+ res.cookie("token", authToken, {
+  httpOnly: true,
+  secure: true, // if using https locally; false if not
+  sameSite: "none",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
 
 
 
