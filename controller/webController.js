@@ -321,6 +321,24 @@ return res.status(200).json({
   }
 };
 
+
+
+//logut controller
+
+
+const logutController = async (req, res) =>{
+    res.clearCookie("token", {
+    httpOnly: true,
+    secure:true,
+    sameSite: "lax"
+  });
+
+  return res.json({ message: "Logged out successfully" });
+}
+
+
+
+
 // Get User Profile Details
 const profileController = async (req, res) => {
   try {
@@ -373,4 +391,5 @@ module.exports = {
   userLoginController,
   profileController,
   userDataController,
+  logutController,
 };

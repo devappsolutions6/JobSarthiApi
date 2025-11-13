@@ -9,6 +9,7 @@ const {
   userSignupController,
   userLoginController,
   userDataController,
+  logutController,
 } = require("../controller/webController");
 const {
   verifyEmailController,
@@ -35,6 +36,8 @@ router.get("/web/api/verify-email", verifyEmailController);
 router.post("/web/api/login", loginLimiter, userLoginController);
 
 router.get("/web/api/user/profile", authMiddleware, profileController);
+
+router.get('/web/api/logout',logutController)
 router.post("/web/api/user/jobs", userDataController);
 
 module.exports = router;
