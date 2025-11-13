@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const cors = require("cors");   // ⬅️ yaha import
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const webroutes = require("./routes/webroutes");
 const Database = require("./config/db");
 
@@ -10,33 +11,32 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-// Parse URL-encoded bodies (for form submissions)
 app.use(express.urlencoded({ extended: true }));
 
+// 🔥 REQUIRED FOR httpOnly cookies
+app.use(cookieParser());
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
+// Allowed frontend
+const FRONTEND = process.env.FRONTEND_URL || "http://localhost:3000";
 
-];
-
-// ✅ CORS Middleware
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+// 🔥 FIXED CORS
+app.use(
+  cors({
+    origin: FRONTEND, // NOT ARRAY
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
 
 Database();
 
 // Routes
 app.use("/", webroutes);
 
-// Root route
 app.get("/", (req, res) => {
   res.send("Welcome to Home Page");
 });
 
-// Server
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

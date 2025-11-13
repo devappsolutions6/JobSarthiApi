@@ -289,20 +289,28 @@ const userLoginController = async (req, res) => {
       console.warn("Could not update lastLogin:", e.message);
     }
 
-    // Return token and minimal user info
-    return res.status(200).json({
-      status: "success",
-      message: "Login successful",
-      data: {
-        token,
-        user: {
-          id: user._id,
-          firstName: user.FirstName,
-          lastName: user.LastName,
-          email: user.Email,
-        },
-      },
-    });
+
+    res.cookie("token", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+});
+
+return res.status(200).json({
+  status: "success",
+  message: "Login successful",
+  data: {
+    user: {
+      id: user._id,
+      firstName: user.FirstName,
+      lastName: user.LastName,
+      email: user.Email,
+    },
+  },
+});
+
+   
   } catch (error) {
     console.error("Login error:", error);
     return res
