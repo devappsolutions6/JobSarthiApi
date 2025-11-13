@@ -17,12 +17,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // Allowed frontend
-const FRONTEND = process.env.FRONTEND_URL || "http://localhost:3000";
+// const FRONTEND = process.env.FRONTEND_URL;
 
 // 🔥 FIXED CORS
 app.use(
   cors({
-    origin: FRONTEND, // NOT ARRAY
+    origin: [
+      "http://localhost:3000",           // local development
+      "https://jobsarthi.vercel.app",    // production frontend
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   })
