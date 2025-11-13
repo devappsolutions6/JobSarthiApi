@@ -280,7 +280,7 @@ const userLoginController = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    // Optionally: update lastLogin timestamp
+    // Optionally: update lastLogin timestamps
     try {
       user.lastLogin = new Date();
       await user.save();
