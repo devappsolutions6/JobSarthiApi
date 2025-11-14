@@ -10,6 +10,8 @@ const {
   userLoginController,
   userDataController,
   logutController,
+  userPrefrenceController,
+  Savepreferences,
 } = require("../controller/webController");
 const {
   verifyEmailController,
@@ -38,6 +40,12 @@ router.post("/web/api/login", loginLimiter, userLoginController);
 router.get("/web/api/user/profile", authMiddleware, profileController);
 
 router.get('/web/api/logout',logutController)
-router.post("/web/api/user/jobs", userDataController);
+
+router.post(
+  "/web/api/user/save-preferences",
+  authMiddleware,
+ Savepreferences
+);
+
 
 module.exports = router;

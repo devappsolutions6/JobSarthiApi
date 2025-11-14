@@ -214,89 +214,100 @@ const UserSignupSchemaDatas = mongoose.model("accounts", UserSignupSchema);
 
 
 
-// all  Data of the user for jobs filtering
+// user prefrence schema 
 
-const UserDataSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "accounts",
-      required: true,
-      index: true,
-    },
 
-    // 🎓 Education Info
-    educationLevel: {
-      type: String,
-      enum: [
-        "10th Pass",
-        "12th Pass",
-        "ITI",
-        "Diploma",
-        "Graduate",
-        "Post Graduate",
-        "B.Tech",
-        "M.Tech",
-        "MBBS",
-        "Other",
-      ],
-    },
-    educationStream: { type: String },
-    educationSpecialization: { type: String },
 
-    // 🌍 Location & Category Preferences
-    preferredState: { type: String, default: "All India" },
-    category: {
-      type: String,
-      enum: ["GEN", "OBC", "SC", "ST", "EWS"],
-      default: "GEN",
-    },
-    gender: {
-      type: String,
-      enum: ["Male", "Female", "Any"],
-      default: "Any",
-    },
 
-    // 🧾 Job Preferences
-    organizationType: {
-      type: String,
-      enum: [
-        "Central Government",
-        "State Government",
-        "Defence",
-        "Railway",
-        "Banking",
-        "PSU",
-        "Police",
-        "Teaching",
-        "Engineering",
-        "Medical",
-        "Other",
-      ],
-      default: "Central Government",
-    },
-    department: { type: String },
-    experience: { type: String, default: "Fresher" },
-
-    // 🔍 Smart Tag or Keyword Preferences
-    interests: {
-      type: [String],
-      default: [],
-      index: true,
-    }, // e.g. ["SSC", "UP Police", "Banking"]
-
-    // Optional future AI optimization fields
-    aiProfileScore: { type: Number, default: 0 }, // personalized match score
-    lastUpdated: { type: Date, default: Date.now },
+const UserPreferenceSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "accounts",
+    required: true,
+    index: true,
   },
-  { timestamps: true }
-);
+
+  // 🎓 EDUCATION (matching with eligibility.education.level)
+  educationLevel: {
+    type: String,
+    enum: [
+      "10th Pass",
+      "12th Pass",
+      "ITI",
+      "Diploma",
+      "Graduate",
+      "Post Graduate",
+      "B.Tech",
+      "M.Tech",
+      "MBBS",
+      "Other",
+    ],
+  },
+
+  // match with eligibility.education.stream
+  educationStream: { type: String },
+
+  // match with eligibility.education.specialization
+  specialization: { type: String },
+
+  // 🌍 LOCATION (matching with job.location)
+  preferredState: {
+    type: String,
+    default: "All India",
+  },
+
+  // 👤 CATEGORY (matching eligibility.allowedCategories)
+  category: {
+    type: String,
+    enum: ["GEN", "OBC", "SC", "ST", "EWS", "Female"],
+    default: "GEN",
+  },
+
+  // 🚻 gender match with preferences.preferredGender
+  gender: {
+    type: String,
+    enum: ["Male", "Female", "Any"],
+    default: "Any",
+  },
+
+  // 🏛️ Job Type
+  organizationType: {
+    type: String,
+    enum: [
+      "Central Government",
+      "State Government",
+      "Defence",
+      "Railway",
+      "Banking",
+      "PSU",
+      "Police",
+      "Teaching",
+      "Engineering",
+      "Medical",
+      "Other",
+    ],
+  },
+
+  // 🏢 Department (matching JobsSchema.department)
+  department: { type: String },
+
+  // 💼 Experience match — eligibility.experience
+  experience: { type: String, default: "Fresher" },
+
+  // 🔍 Meta tags matching (Police, Banking, SSC ...)
+  interests: {
+    type: [String],
+    default: [],
+    index: true,
+  }, // match with job.metaTags & job.searchKeywords
+
+}, { timestamps: true });
 
 
 
 
 
-const userDataSchemasDatas = mongoose.model("userData", UserDataSchema);
+const UserprefrenceData = mongoose.model("userPreferences", UserPreferenceSchema);
 
 
 
@@ -310,5 +321,7 @@ module.exports = {
    AdmitCardData,
    ResultCardData
    ,UserSignupSchemaDatas,
-  userDataSchemasDatas
+   UserprefrenceData
+
+
 };

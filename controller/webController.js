@@ -8,6 +8,7 @@ const {
 
   UserSignupSchemaDatas,
   userDataSchemasDatas,
+  UserprefrenceData,
 } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -325,7 +326,6 @@ return res.status(200).json({
 
 //logut controller
 
-
 const logutController = async (req, res) =>{
     res.clearCookie("token", {
     httpOnly: true,
@@ -363,22 +363,81 @@ const profileController = async (req, res) => {
   }
 };
 
-// Take user All data for jobs so we can fiter jobs
 
-const userDataController = async(req, res) => {
+
+// Save all data of the user for job prefrence
+
+
+
+
+
+const Savepreferences = async (req, res) => {
   try {
+    // userId comes from authMiddleware using cookies.token
+    const userId = req.user._id;
 
-    const body = req.body || {};
-    const { userId, educationLevel, state, category}  = body;
+    const {
+      educationLevel,
+      educationStream,
+      specialization,
+      preferredState,
+      category,
+      gender,
+      organizationType,
+      department,
+      experience,
+      interests
+    } = req.body;
 
-    const newUserData = new userDataSchemasDatas
+    // Validation: At least education or state or category must be filled
+    if (!educationLevel && !preferredState && !category) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please provide at least one preference field."
+      });
+    }
+
+    // Prepare data object
+    const preferenceData = {
+      userId,
+      educationLevel,
+      educationStream,
+      specialization,
+      preferredState,
+      category,
+      gender,
+      organizationType,
+      department,
+      experience,
+      interests
+    };
+
+    // Save or Update (upsert)
+    const savedPreference = await UserprefrenceData.findOneAndUpdate(
+      { userId },
+      preferenceData,
+      { new: true, upsert: true } // Create if not exists
+    );
+
+    return res.status(200).json({
+      status: "success",
+      message: "User preferences saved successfully.",
+      data: savedPreference
+    });
 
   } catch (err) {
-    res.status(500).json({
-      error: err.message,
+    console.error("Preference Error:", err);
+    return res.status(500).json({
+      status: "error",
+      message: "Failed to save preferences.",
+      error: err.message
     });
   }
 };
+
+
+
+
 
 module.exports = {
   
@@ -390,6 +449,6 @@ module.exports = {
   userSignupController,
   userLoginController,
   profileController,
-  userDataController,
+ Savepreferences,
   logutController,
 };
