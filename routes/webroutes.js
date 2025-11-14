@@ -12,6 +12,7 @@ const {
   logutController,
   userPrefrenceController,
   Savepreferences,
+  recommendJobsController,
 } = require("../controller/webController");
 const {
   verifyEmailController,
@@ -46,6 +47,9 @@ router.post(
   authMiddleware,
  Savepreferences
 );
+
+
+router.get('/web/api/user/preferencesJobs',authMiddleware,recommendJobsController )
 
 
 module.exports = router;

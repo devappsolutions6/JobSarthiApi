@@ -179,15 +179,16 @@ const JobsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 // 🧠 Text Index for Faster Search (MongoDB optimization)
 JobsSchema.index({
-  title: "text",
-  description: "text",
-  "eligibility.education.level": "text",
-  metaTags: "text",
-  searchKeywords: "text",
+  "eligibility.education.level": 1,
+  organizationType: 1,
+  location: 1,
+  metaTags: 1,
+  searchKeywords: 1,
 });
+
+
 const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 
@@ -288,11 +289,9 @@ const UserPreferenceSchema = new mongoose.Schema({
     ],
   },
 
-  // 🏢 Department (matching JobsSchema.department)
-  department: { type: String },
+ 
 
-  // 💼 Experience match — eligibility.experience
-  experience: { type: String, default: "Fresher" },
+  
 
   // 🔍 Meta tags matching (Police, Banking, SSC ...)
   interests: {
@@ -308,6 +307,14 @@ const UserPreferenceSchema = new mongoose.Schema({
 
 
 const UserprefrenceData = mongoose.model("userPreferences", UserPreferenceSchema);
+
+
+
+
+
+// Get the jobs according tho the user data 
+
+
 
 
 

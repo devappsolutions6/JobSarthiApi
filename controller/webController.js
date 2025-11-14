@@ -376,6 +376,10 @@ const Savepreferences = async (req, res) => {
     // userId comes from authMiddleware using cookies.token
     const userId = req.user._id;
 
+    console.log('.............User idd.............', userId)
+
+
+
     const {
       educationLevel,
       educationStream,
@@ -437,6 +441,102 @@ const Savepreferences = async (req, res) => {
 
 
 
+const recommendJobsController = async (req, res) => {
+  try {
+    const user = req.user; // from auth middleware
+    const prefs = await UserprefrenceData.findOne({ userId: user._id }).lean();
+
+    if (!prefs) {
+      return res.status(404).json({
+        status: "error",
+        message: "User preferences not found"
+      });
+    }
+
+    // -----------------------------
+    // 1️⃣ Hard Filter Query
+    // -----------------------------
+const filterQuery = {
+  isActive: true,
+  "importantDates.lastDate": { $gte: new Date() },
+  $or: [
+    { "eligibility.education.level": { $regex: prefs.educationLevel, $options: "i" } },
+    { location: { $in: [prefs.preferredState, "All India"] } },
+    { organizationType: { $regex: prefs.organizationType, $options: "i" } },
+    { metaTags: { $in: prefs.interests } },
+    { searchKeywords: { $in: prefs.interests } }
+  ]
+};
+
+
+
+    // Fetch Jobs
+    let jobs = await JobsSchemaDatas.find(filterQuery).lean();
+
+
+    // -----------------------------
+    // 2️⃣ Apply AI Scoring
+    // -----------------------------
+    const rankedJobs = jobs.map(job => {
+      let score = 0;
+
+      // Education match
+      if (job.eligibility?.some(e => e.education.level === prefs.educationLevel))
+        score += 25;
+
+      // State match
+      if (job.location === prefs.preferredState) score += 20;
+
+      // Category
+      if (job.vacancies?.some(v =>
+        Object.keys(v.categoryWise || {}).includes(prefs.category.toLowerCase())
+      )) score += 10;
+
+      // Gender
+      if (job.preferences?.preferredGender === prefs.gender) score += 10;
+
+      // Organization type
+      if (job.organizationType === prefs.organizationType) score += 10;
+
+      // Interests (meta tags / keywords)
+      if (prefs.interests?.some(tag =>
+        job.metaTags?.includes(tag) || job.searchKeywords?.includes(tag)
+      )) score += 30;
+
+      // Skills match
+      if (prefs.skills?.some(skill =>
+        job.searchKeywords?.includes(skill)
+      )) score += 15;
+
+      return { ...job, score };
+    });
+
+
+    // -----------------------------
+    // 3️⃣ Sort by Score
+    // -----------------------------
+    rankedJobs.sort((a, b) => b.score - a.score);
+
+
+    // -----------------------------
+    // 4️⃣ Return Response
+    // -----------------------------
+    return res.json({
+      status: "success",
+      total: rankedJobs.length,
+      data: rankedJobs
+    });
+
+  } catch (err) {
+    console.error("Recommendation Error:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to process recommendation",
+      error: err.message
+    });
+  }
+};
+
 
 
 module.exports = {
@@ -451,4 +551,5 @@ module.exports = {
   profileController,
  Savepreferences,
   logutController,
+  recommendJobsController,
 };

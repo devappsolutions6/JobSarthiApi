@@ -8,9 +8,15 @@ const authMiddleware = async (req, res, next) => {
     if (!token) return res.status(401).json({ message: "Authentication required" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    
     const query = decoded.userId ? { _id: decoded.userId } : { Email: decoded.email };
     const user = await UserSignupSchemaDatas.findOne(query).select("-Password -verificationToken -__v");
     if (!user) return res.status(401).json({ message: "User not found" });
+
+    console.log('token',token)
+    console.log('decode', decoded);
+    
 
     req.user = user;
     next();
