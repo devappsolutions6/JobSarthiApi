@@ -14,10 +14,6 @@ const authMiddleware = async (req, res, next) => {
     const user = await UserSignupSchemaDatas.findOne(query).select("-Password -verificationToken -__v");
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    console.log('token',token)
-    console.log('decode', decoded);
-    
-
     req.user = user;
     next();
   } catch (err) {

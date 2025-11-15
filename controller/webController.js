@@ -69,7 +69,7 @@ const getJobs = async (req, res) => {
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Fetching job by _id:", id);
+  
 
     const job = await JobsSchemaDatas.findById(id);
 
@@ -376,7 +376,7 @@ const Savepreferences = async (req, res) => {
     // userId comes from authMiddleware using cookies.token
     const userId = req.user._id;
 
-    console.log('.............User idd.............', userId)
+  
 
 
 
@@ -441,90 +441,123 @@ const Savepreferences = async (req, res) => {
 
 
 
+
+
+// Get all Jobs recommend by user
+
+
 const recommendJobsController = async (req, res) => {
   try {
-    const user = req.user; // from auth middleware
-    const prefs = await UserprefrenceData.findOne({ userId: user._id }).lean();
+    const user = req.user;
+    const userPrefrence = await UserprefrenceData.findOne({ userId: user._id }).lean();
 
-    if (!prefs) {
+    
+
+    if (!userPrefrence) {
       return res.status(404).json({
         status: "error",
-        message: "User preferences not found"
+        message: "User preferences not found",
       });
     }
 
-    // -----------------------------
-    // 1️⃣ Hard Filter Query
-    // -----------------------------
-const filterQuery = {
-  isActive: true,
-  "importantDates.lastDate": { $gte: new Date() },
-  $or: [
-    { "eligibility.education.level": { $regex: prefs.educationLevel, $options: "i" } },
-    { location: { $in: [prefs.preferredState, "All India"] } },
-    { organizationType: { $regex: prefs.organizationType, $options: "i" } },
-    { metaTags: { $in: prefs.interests } },
-    { searchKeywords: { $in: prefs.interests } }
-  ]
-};
+   
+    const educationRankMap = {
+      "10th Pass": 1,
+      "12th Pass": 2,
+      "ITI": 2,
+      "Diploma": 2,
+      "Graduate": 3,
+      "B.Tech": 3,
+      "Post Graduate": 4,
+      "M.Tech": 4,
+      "MBBS": 4,
+      "Other": 1,
+    };
+
+    // User ke education ka rank
+    const userRank = educationRankMap[userPrefrence.educationLevel];
 
 
+
+   
+    //  Rank-Based Hard Filter
+   
+    const filterQuery = {
+      isActive: true,
+      "importantDates.lastDate": { $gte: new Date() },
+
+
+      // LOWER OR EQUAL education levels allowed
+      "eligibility.education.rank": { $lte: userRank },
+
+      //  ANY of these preference matches
+      $or: [
+        { location: { $in: [userPrefrence.preferredState, "All India"] } },
+        { organizationType: { $regex: userPrefrence.organizationType, $options: "i" } },
+        { metaTags: { $in: userPrefrence.interests } },
+        { searchKeywords: { $in: userPrefrence.interests } },
+      ],
+    };
+
+
+    console.log('filll......................', filterQuery);
 
     // Fetch Jobs
     let jobs = await JobsSchemaDatas.find(filterQuery).lean();
 
-
     // -----------------------------
     // 2️⃣ Apply AI Scoring
     // -----------------------------
-    const rankedJobs = jobs.map(job => {
+    const rankedJobs = jobs.map((job) => {
       let score = 0;
 
-      // Education match
-      if (job.eligibility?.some(e => e.education.level === prefs.educationLevel))
+      // Education exact match = bonus
+      if (job.eligibility?.some((e) => e.education.level === userPrefrence.educationLevel))
         score += 25;
 
       // State match
-      if (job.location === prefs.preferredState) score += 20;
+      if (job.location === userPrefrence.preferredState) score += 20;
 
-      // Category
-      if (job.vacancies?.some(v =>
-        Object.keys(v.categoryWise || {}).includes(prefs.category.toLowerCase())
-      )) score += 10;
+      // Category match
+      if (
+        job.vacancies?.some((v) =>
+          Object.keys(v.categoryWise || {}).includes(userPrefrence.category.toLowerCase())
+        )
+      )
+        score += 10;
 
-      // Gender
-      if (job.preferences?.preferredGender === prefs.gender) score += 10;
+      // Gender match
+      if (job.preferences?.preferredGender === userPrefrence.gender) score += 10;
 
-      // Organization type
-      if (job.organizationType === prefs.organizationType) score += 10;
+      // Organization type match
+      if (job.organizationType === userPrefrence.organizationType) score += 10;
 
-      // Interests (meta tags / keywords)
-      if (prefs.interests?.some(tag =>
-        job.metaTags?.includes(tag) || job.searchKeywords?.includes(tag)
-      )) score += 30;
-
-      // Skills match
-      if (prefs.skills?.some(skill =>
-        job.searchKeywords?.includes(skill)
-      )) score += 15;
+      // Interest match
+      if (
+        userPrefrence.interests?.some(
+          (tag) => job.metaTags?.includes(tag) || job.searchKeywords?.includes(tag)
+        )
+      )
+        score += 30;
 
       return { ...job, score };
     });
 
 
+    
+
     // -----------------------------
-    // 3️⃣ Sort by Score
+    // 3️⃣ Sort by best score
     // -----------------------------
     rankedJobs.sort((a, b) => b.score - a.score);
 
-
     // -----------------------------
-    // 4️⃣ Return Response
+    // 4️⃣ Send Response
     // -----------------------------
     return res.json({
       status: "success",
       total: rankedJobs.length,
-      data: rankedJobs
+      data: rankedJobs,
     });
 
   } catch (err) {
@@ -532,10 +565,11 @@ const filterQuery = {
     res.status(500).json({
       status: "error",
       message: "Failed to process recommendation",
-      error: err.message
+      error: err.message,
     });
   }
 };
+
 
 
 

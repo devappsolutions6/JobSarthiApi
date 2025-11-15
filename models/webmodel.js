@@ -109,6 +109,7 @@ const JobsSchema = new mongoose.Schema(
             ],
             required: true,
           },
+              rank: { type: Number, required: true },
           stream: { type: String }, // "Science", "Arts", "Commerce", etc.
           specialization: { type: String }, // "Computer Science", "Civil Engg"
         },
