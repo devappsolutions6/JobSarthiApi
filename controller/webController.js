@@ -86,6 +86,42 @@ const getJobById = async (req, res) => {
   }
 };
 
+
+
+const getHomePageJobs = async (req, res) => {
+  try {
+    const JobsData = await JobsSchemaDatas.find(
+      {},
+    { _id: 1, title: 1, JobId: 1, TotalPost:1, 
+      "importantDates.startDate": 1,
+      "importantDates.lastDate":1,
+      "organizationType":1,
+
+
+}
+    );
+
+    res.json({
+      message: "Successfully fetched the data",
+      data: JobsData,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Error fetching jobs",
+      details: error.message,
+    });
+  }
+};
+
+
+
+
+
+
+
+
+
 const getAdmitCard = async (req, res) => {
   try {
     const admitCards = await AdmitCardData.find();
@@ -369,8 +405,6 @@ const profileController = async (req, res) => {
 
 
 
-
-
 const Savepreferences = async (req, res) => {
   try {
     // userId comes from authMiddleware using cookies.token
@@ -608,7 +642,7 @@ const recommendJobsController = async (req, res) => {
 
 
 module.exports = {
-  
+   getHomePageJobs,
   getJobs,
   getJobById,
   _getAnnouncement,

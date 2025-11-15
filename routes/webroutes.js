@@ -8,28 +8,28 @@ const {
   getResultCard,
   userSignupController,
   userLoginController,
-  userDataController,
   logutController,
-  userPrefrenceController,
-  Savepreferences,
+   Savepreferences,
   recommendJobsController,
+  getHomePageJobs,
 } = require("../controller/webController");
+
+
+
 const {
   verifyEmailController,
 } = require("../controller/verifyEmailController");
 
+
 const router = express.Router();
 
-// Routes connected to controller
 
 router.get("/web/api/getJobs", getJobs);
+router.get("/web/api/hompageJobs", getHomePageJobs);
 router.get("/web/api/getJobs/:id", getJobById);
 router.get("/web/api/getadmitcards", getAdmitCard);
 router.get("/web/api/getresultcards", getResultCard);
-
-
 router.get("/web/api/announcement", _getAnnouncement);
-
 const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
 const authMiddleware = require("../middleware/auth");
 const { profileController } = require("../controller/webController");
