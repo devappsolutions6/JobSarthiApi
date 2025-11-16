@@ -6,21 +6,27 @@ const {
   getAdmitCard,
   getResultCard,
   logutController,
-  Savepreferences,
-  recommendJobsController,
   getHomePageJobs,
-  GetSaveData,
-  profileController,
 } = require("../controller/webController");
 
 const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
-const { verifyEmailController } = require("../controller/verifyEmailController");
+const {
+  verifyEmailController,
+} = require("../controller/verifyEmailController");
 
 const authMiddleware = require("../middleware/auth");
-const { userSignupController, userLoginController } = require("../controller/authController");
+const {
+  userSignupController,
+  userLoginController,
+} = require("../controller/authController");
+const {
+  profileController,
+  Savepreferences,
+  GetSaveData,
+  recommendJobsController,
+} = require("../controller/userController");
 
 const router = express.Router();
-
 
 // ------------------------------
 // Public Routes (No Auth)
@@ -33,14 +39,12 @@ router.get("/getresultcards", getResultCard);
 router.get("/announcement", _getAnnouncement);
 router.get("/logout", logutController);
 
-
 // ------------------------------
 // Auth Related Routes
 // ------------------------------
 router.post("/userSignup", signupLimiter, userSignupController);
 router.get("/verify-email", verifyEmailController);
 router.post("/login", loginLimiter, userLoginController);
-
 
 // ------------------------------
 // Protected Routes (Need Auth)
