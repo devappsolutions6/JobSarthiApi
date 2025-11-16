@@ -7,9 +7,7 @@ const createEmailTransporter = () => {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
         },
-        tls: {
-            rejectUnauthorized: false // For development only, remove in production
-        }
+       
     });
 };
 
