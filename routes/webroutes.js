@@ -5,8 +5,6 @@ const {
   getJobById,
   getAdmitCard,
   getResultCard,
-  userSignupController,
-  userLoginController,
   logutController,
   Savepreferences,
   recommendJobsController,
@@ -19,6 +17,7 @@ const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
 const { verifyEmailController } = require("../controller/verifyEmailController");
 
 const authMiddleware = require("../middleware/auth");
+const { userSignupController, userLoginController } = require("../controller/authController");
 
 const router = express.Router();
 
