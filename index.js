@@ -9,6 +9,9 @@ dotenv.config();
 
 const app = express();
 
+// ⭐ FIX FOR RENDER — MUST BE AT THE TOP
+app.set("trust proxy", 1);
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
