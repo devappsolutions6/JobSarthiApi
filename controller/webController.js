@@ -475,6 +475,29 @@ const Savepreferences = async (req, res) => {
 
 
 
+// Get all data of the specific user
+const GetSaveData = async (req, res) => {
+  try {
+    const userId = req.user._id;  
+    console.log("User ID:", userId);
+
+    const userData = await UserprefrenceData.find({userId
+    });
+
+    return res.json({
+      message: "User data fetched successfully",
+      data: userData
+    });
+
+  } catch (err) {
+    return res.json({
+      message: err.message || err
+    });
+  }
+};
+
+
+
 
 
 // Get all Jobs recommend by user
@@ -654,4 +677,5 @@ module.exports = {
  Savepreferences,
   logutController,
   recommendJobsController,
+  GetSaveData
 };

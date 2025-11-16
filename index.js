@@ -16,8 +16,6 @@ app.use(express.urlencoded({ extended: true }));
 // 🔥 REQUIRED FOR httpOnly cookies
 app.use(cookieParser());
 
-// Allowed frontend
-// const FRONTEND = process.env.FRONTEND_URL;
 
 // 🔥 FIXED CORS
 app.use(
@@ -34,7 +32,7 @@ app.use(
 Database();
 
 // Routes
-app.use("/", webroutes);
+app.use("/web/api", webroutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to Home Page");
