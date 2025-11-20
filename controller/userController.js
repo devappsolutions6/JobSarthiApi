@@ -260,13 +260,26 @@ const recommendJobsController = async (req, res) => {
     // ------------------------------------------
     rankedJobs.sort((a, b) => b.score - a.score);
 
+    const finalJobs = rankedJobs.map((value)=>{
+      return{
+        importantDates:value.importantDates,
+          id: value._id,
+            title: value.title,
+        JobId: value.JobId,
+        organizationType:value.organizationType,
+        TotalPost: value.TotalPost,
+        score:value.score,
+      
+        
+      }
+    })
+
     // ------------------------------------------
     // 📤 Response
     // ------------------------------------------
     return res.json({
-      status: "success",
-      total: rankedJobs.length,
-      data: rankedJobs,
+      
+      data: finalJobs,
     });
   } catch (err) {
     console.error("Recommendation Error:", err);

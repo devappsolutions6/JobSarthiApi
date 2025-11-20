@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 // Signup rate limiter: prevent brute force account creation
 const signupLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour window
-    max: 5, // limit each IP to 5 signup requests per window
+    max: 40, // limit each IP to 5 signup requests per window
     message: 'Too many accounts created from this IP, please try again after an hour',
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
