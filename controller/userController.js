@@ -262,14 +262,13 @@ const recommendJobsController = async (req, res) => {
 
     const finalJobs = rankedJobs.map((value)=>{
       return{
-        importantDates:value.importantDates,
-          id: value._id,
+          _id: value._id,
             title: value.title,
         JobId: value.JobId,
         organizationType:value.organizationType,
         TotalPost: value.TotalPost,
         score:value.score,
-      
+        importantDates:value.importantDates,
         
       }
     })
