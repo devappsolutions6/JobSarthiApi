@@ -142,11 +142,13 @@ const getResultCard = async (req, res) => {
 //logut controller
 
 const logutController = async (req, res) =>{
-    res.clearCookie("token", {
+res.clearCookie("token", {
     httpOnly: true,
-    secure:true,
-    sameSite: "lax"
+    secure: true,       // same as login
+    sameSite: "none",   // same as login
+    path: "/"           // same as login
   });
+
 
   return res.json({ message: "Logged out successfully" });
 }
