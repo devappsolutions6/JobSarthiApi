@@ -92,10 +92,10 @@ const getHomePageJobs = async (req, res) => {
   try {
     const JobsData = await JobsSchemaDatas.find(
       {},
-    { _id: 1, title: 1, JobId: 1, TotalPost:1, 
-      "importantDates.startDate": 1,
-      "importantDates.lastDate":1,
-      "organizationType":1,
+    { _id: 1, title: 1, JobId: 1, "vacancies.total":1, 
+      "importantDates.applyStart": 1,
+      "importantDates.applyEnd":1,
+      "conductingBody":1,
 
 
 }
