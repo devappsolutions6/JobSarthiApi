@@ -7,6 +7,7 @@ const {
   getResultCard,
   logutController,
   getHomePageJobs,
+  JobCategoryController,
 } = require("../controller/webController");
 
 const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
@@ -38,6 +39,7 @@ router.get("/getadmitcards", getAdmitCard);
 router.get("/getresultcards", getResultCard);
 router.get("/announcement", _getAnnouncement);
 router.get("/logout", logutController);
+router.get("/Jobs-category/:type",JobCategoryController)
 
 // ------------------------------
 // Auth Related Routes

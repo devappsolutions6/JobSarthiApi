@@ -154,6 +154,46 @@ res.clearCookie("token", {
 }
 
 
+const JobCategoryController = async (req, res) => {
+  try {
+    const type = req.params.type?.toLowerCase();
+
+     
+
+  
+    const jobCollection = await JobsSchemaDatas.aggregate([
+      {
+        $match: {
+          isActive: true,
+          jobDomains: type
+        }
+      },
+     {
+      $project:{
+        vacancies:1,
+        importantDates:1,
+        conductingBody:1,
+        title:1
+      }
+     }
+    ]);
+
+    return res.status(200).json({
+      jobType: type,
+      total: jobCollection.length,
+      jobs: jobCollection
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      error: err.message
+    });
+  }
+};
+
+
+
+
 
 
 module.exports = {
@@ -165,5 +205,6 @@ module.exports = {
   getResultCard,
  
   logutController,
+  JobCategoryController,
   
 };
