@@ -181,7 +181,7 @@ const JobCategoryController = async (req, res) => {
     return res.status(200).json({
       jobType: type,
       total: jobCollection.length,
-      jobs: jobCollection
+      data: jobCollection
     });
 
   } catch (err) {
