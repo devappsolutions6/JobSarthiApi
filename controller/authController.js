@@ -14,12 +14,19 @@ const userSignupController = async (req, res) => {
   try {
     // 1. Sanitize and validate input
     const body = req.body || {};
-    const { firstName, lastName, email, password } = body;
+  const {
+  FirstName,
+  LastName,
+  Email,
+  Password,
+} = req.body;
 
-    // Remove any unwanted characters and trim whitespace
-    const sanitizedFirstName = firstName?.trim();
-    const sanitizedLastName = lastName?.trim();
-    const sanitizedEmail = email?.trim().toLowerCase();
+const sanitizedFirstName = FirstName?.trim();
+const sanitizedLastName = LastName?.trim();
+const sanitizedEmail = Email?.trim().toLowerCase();
+const password = Password;
+
+ 
 
     // Validate input using the validation utility
     const { isValid, errors } = validateSignupInput(
@@ -196,6 +203,7 @@ const userLoginController = async (req, res) => {
   sameSite: "none",    // 🔥 required for cross-origin
   path: "/",           // 🔥 required
   maxAge: 7 * 24 * 60 * 60 * 1000,
+  
 });
 
 
@@ -208,6 +216,7 @@ return res.status(200).json({
       firstName: user.FirstName,
       lastName: user.LastName,
       email: user.Email,
+      token
     },
   },
 });

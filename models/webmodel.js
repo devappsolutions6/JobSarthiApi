@@ -342,86 +342,72 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 // user prefrence schema 
 
 
+const UserPreferenceSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "accounts",
+      required: true,
+      unique: true,
+      index: true,
+    },
 
-const UserPreferenceSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "accounts",
-    required: true,
-    index: true,
+    // 🎓 EDUCATION (maps to eligibility.education)
+    education: {
+      levels: {
+        type: [String], // ["graduate", "12th pass"]
+        default: [],
+        index: true,
+      },
+      stream: {
+        type: String, // science, arts, commerce, engineering
+      },
+      specialization: {
+        type: String,
+      },
+    },
+
+    // 🌍 LOCATION (maps to locations[])
+    preferredLocations: {
+      type: [String], // ["Uttar Pradesh", "All India"]
+      default: ["All India"],
+      index: true,
+    },
+
+    // 👤 CATEGORY (maps to vacancies.breakup.category)
+    category: {
+      type: String,
+      enum: ["gen", "obc", "sc", "st", "ews"],
+      lowercase: true,
+    },
+
+    // 🚻 GENDER (maps to eligibility.gender)
+    gender: {
+      type: String,
+      enum: ["male", "female", "any"],
+      default: "any",
+      lowercase: true,
+    },
+
+    // 🏛 ORGANIZATION TYPE (maps to organization.type)
+    organizationTypes: {
+      type: [String], // ["police", "banking"]
+      default: [],
+      index: true,
+    },
+
+    // 🔍 INTEREST TAGS (maps to metaTags & searchKeywords)
+    interests: {
+      type: [String],
+      default: [],
+      index: true,
+    },
   },
+  { timestamps: true }
+);
 
-  // 🎓 EDUCATION (matching with eligibility.education.level)
-  educationLevel: {
-    type: String,
-    enum: [
-      "10th Pass",
-      "12th Pass",
-      "ITI",
-      "Diploma",
-      "Graduate",
-      "Post Graduate",
-      "B.Tech",
-      "M.Tech",
-      "MBBS",
-      "Other",
-    ],
-  },
 
-  // match with eligibility.education.stream
-  educationStream: { type: String },
 
-  // match with eligibility.education.specialization
-  specialization: { type: String },
-
-  // 🌍 LOCATION (matching with job.location)
-  preferredState: {
-    type: String,
-    default: "All India",
-  },
-
-  // 👤 CATEGORY (matching eligibility.allowedCategories)
-  category: {
-    type: String,
-    enum: ["GEN", "OBC", "SC", "ST", "EWS", "Female"],
-    default: "GEN",
-  },
-
-  // 🚻 gender match with preferences.preferredGender
-  gender: {
-    type: String,
-    enum: ["Male", "Female", "Any"],
-    default: "Any",
-  },
-
-  // 🏛️ Job Type
-  organizationType: {
-    type: String,
-    enum: [
-      "Central Government",
-      "State Government",
-      "Defence",
-      "Railway",
-      "Banking",
-      "PSU",
-      "Police",
-      "Teaching",
-      "Engineering",
-      "Medical",
-      "Other",
-    ],
-  },
-
-  
-
-  // 🔍 Meta tags matching (Police, Banking, SSC ...)
-  interests: {
-    type: [String],
-    default: [],
-    index: true,
-  }, // match with job.metaTags & job.searchKeywords
-
-}, { timestamps: true });
 
 
 

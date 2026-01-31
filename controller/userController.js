@@ -27,6 +27,28 @@ const profileController = async (req, res) => {
   }
 };
 
+
+// Get all data of the specific user
+const GetSaveData = async (req, res) => {
+  try {
+    const userId = req.user._id;  
+    console.log("User ID:", userId);
+
+    const userData = await UserprefrenceData.find({userId
+    });
+
+    return res.json({
+      message: "User data fetched successfully",
+      data: userData
+    });
+
+  } catch (err) {
+    return res.json({
+      message: err.message || err
+    });
+  }
+};
+
 // Save all data of the user for job prefrence
 
 const Savepreferences = async (req, res) => {
@@ -97,198 +119,227 @@ const Savepreferences = async (req, res) => {
   }
 };
 
-// Get all data of the specific user
-const GetSaveData = async (req, res) => {
+
+// ===============================
+// 🎯 EDUCATION ORDER (LOW → HIGH)
+// ===============================
+const EDUCATION_ORDER = [
+  "10th",
+  "12th",
+  "iti",
+  "diploma",
+  "graduate",
+  "post graduate",
+];
+
+// ===============================
+// 🧠 UTILITY: allowed education
+// Graduate → 12th jobs allowed
+// ===============================
+function getAllowedEducationLevels(userLevels = []) {
+  if (!userLevels.length) return [];
+
+  const maxIndex = Math.max(
+    ...userLevels.map(l =>
+      EDUCATION_ORDER.indexOf(l.toLowerCase())
+    )
+  );
+
+  if (maxIndex === -1) return [];
+
+  return EDUCATION_ORDER.slice(0, maxIndex + 1);
+}
+
+// ===============================
+// 🚀 RECOMMEND JOBS CONTROLLER
+ recommendJobsController = async (req, res) => {
   try {
-    const userId = req.user._id;  
-    console.log("User ID:", userId);
+    const userId = req.user._id;
 
-    const userData = await UserprefrenceData.find({userId
-    });
+    // ----------------------------
+    // 1️⃣ FETCH USER PREFERENCE
+    // ----------------------------
+    const preference = await UserprefrenceData
+      .findOne({ userId })
+      .lean();
 
-    return res.json({
-      message: "User data fetched successfully",
-      data: userData
-    });
-
-  } catch (err) {
-    return res.json({
-      message: err.message || err
-    });
-  }
-};
-
-// Get all Jobs recommend by user
-
-const recommendJobsController = async (req, res) => {
-  try {
-    const user = req.user;
-
-    const userPrefrence = await UserprefrenceData.findOne({
-      userId: user._id
-    }).lean();
-
-    if (!userPrefrence) {
+    if (!preference) {
       return res.status(404).json({
         status: "error",
         message: "User preferences not found",
       });
     }
 
-    // ------------------------------------------
-    // 🔹 Education Rank Map (lowercase keys)
-    // ------------------------------------------
-    const educationRankMap = {
-      "10th pass": 1,
-      "12th pass": 2,
-      "iti": 2,
-      "diploma": 2,
-      "graduate": 3,
-      "b.tech": 3,
-      "post graduate": 4,
-      "m.tech": 4,
-      "mbbs": 4,
-      "other": 1,
-    };
+    // ----------------------------
+    // 2️⃣ NORMALIZE USER DATA
+    // ----------------------------
+    const userEducationLevels =
+      preference.education?.levels?.map(l => l.toLowerCase()) || [];
 
-    // Normalize user input → lowercase
-    const eduLower = userPrefrence.educationLevel.toLowerCase();
+    const allowedEducationLevels =
+      getAllowedEducationLevels(userEducationLevels);
 
-    // User education rank
-    const userRank = educationRankMap[eduLower];
+    const userLocations =
+      preference.preferredLocations?.length
+        ? preference.preferredLocations
+        : ["All India"];
 
-    // ------------------------------------------
-    // ❗ If education not found → default lowest
-    // ------------------------------------------
-    if (!userRank) {
-      console.warn("Unknown education level:", userPrefrence.educationLevel);
-    }
+    const userCategory = preference.category; // gen | obc | sc | st | ews
+    const userGender = preference.gender || "any";
 
-    // ------------------------------------------
-    // 🔎 FILTER QUERY
-    // ------------------------------------------
+    const orgTypes =
+      preference.organizationTypes?.map(o => o.toLowerCase()) || [];
+
+    const interests =
+      preference.interests?.map(i => i.toLowerCase()) || [];
+
+    // ----------------------------
+    // 3️⃣ BUILD SAFE FILTER QUERY
+    // ----------------------------
     const filterQuery = {
       isActive: true,
 
-      "importantDates.lastDate": { $gte: new Date() },
+      // application not expired
+      "importantDates.applyEnd": { $gte: new Date() },
 
-      // LOWER OR EQUAL rank allowed
-      "eligibility.education.rank": { $lte: userRank || 1 },
-
-      $or: [
-        // Location match
-        { location: { $in: [userPrefrence.preferredState, "All India"] } },
-
-        // Org type (case-insensitive)
-        {
-          organizationType: {
-            $regex: new RegExp(userPrefrence.organizationType, "i"),
+      // EDUCATION (ARRAY SAFE + RANK LOGIC)
+      ...(allowedEducationLevels.length && {
+        "eligibility.education": {
+          $elemMatch: {
+            level: { $in: allowedEducationLevels },
           },
         },
+      }),
 
-        // Meta tags match
-        { metaTags: { $in: userPrefrence.interests || [] } },
-
-        // Search keywords match
-        { searchKeywords: { $in: userPrefrence.interests || [] } },
+      // LOCATION (OLD + NEW SCHEMA)
+      $or: [
+        { location: { $in: userLocations } },   // legacy
+        { locations: { $in: userLocations } },  // future
       ],
+
+      // JOB DOMAIN (Police / Banking / etc.)
+      ...(orgTypes.length && {
+        jobDomains: { $in: orgTypes },
+      }),
+
+      // INTEREST KEYWORDS
+      ...(interests.length && {
+        searchKeywords: { $in: interests },
+      }),
     };
 
-    console.log("FILTER APPLIED:", filterQuery);
+    // ----------------------------
+    // 4️⃣ FETCH JOBS
+    // ----------------------------
+    const jobs = await JobsSchemaDatas
+      .find(filterQuery)
+      .lean();
 
-    // ------------------------------------------
-    // 📌 Fetch Jobs
-    // ------------------------------------------
-    let jobs = await JobsSchemaDatas.find(filterQuery).lean();
-
-    // ------------------------------------------
-    // ⭐ AI Scoring System
-    // ------------------------------------------
-    const rankedJobs = jobs.map((job) => {
+    // ----------------------------
+    // 5️⃣ SCORING ENGINE
+    // ----------------------------
+    const scoredJobs = jobs.map(job => {
       let score = 0;
 
-      // ✔ Education match (case-insensitive)
+      // 🎓 EDUCATION SCORE
       if (
-        job.eligibility?.some(
-          (e) => e.education.level.toLowerCase() === eduLower
+        job.eligibility?.education?.some(e =>
+          allowedEducationLevels.includes(
+            String(e.level).toLowerCase()
+          )
         )
       ) {
-        score += 25;
+        score += 30;
       }
 
-      // ✔ State match
-      if (job.location === userPrefrence.preferredState) score += 20;
-
-      // ✔ Category match (case-insensitive)
+      // 🌍 LOCATION SCORE
       if (
-        job.vacancies?.some((v) =>
-          Object.keys(v.categoryWise || {}).includes(
-            userPrefrence.category?.toLowerCase()
+        (job.location &&
+          userLocations.includes(job.location)) ||
+        (job.locations &&
+          job.locations.some(l =>
+            userLocations.includes(l)
+          ))
+      ) {
+        score += 20;
+      }
+
+      // 👤 CATEGORY SCORE
+      if (
+        userCategory &&
+        job.vacancies?.breakup?.some(b =>
+          b.categoryWise &&
+          Object.keys(b.categoryWise)
+            .map(k => k.toLowerCase())
+            .includes(userCategory)
+        )
+      ) {
+        score += 10;
+      }
+
+      // 🚻 GENDER SCORE
+      // (no strict gender filter in DB → allow all)
+      score += 10;
+
+      // 🏛 DOMAIN SCORE
+      if (
+        job.jobDomains?.some(d =>
+          orgTypes.includes(
+            String(d).toLowerCase()
           )
         )
       ) {
         score += 10;
       }
 
-      // ✔ Gender match
-      if (job.preferences?.preferredGender === userPrefrence.gender) score += 10;
-
-      // ✔ Organization type match (case-insensitive)
+      // 🔍 INTEREST SCORE
       if (
-        job.organizationType?.toLowerCase() ===
-        userPrefrence.organizationType?.toLowerCase()
-      ) {
-        score += 10;
-      }
-
-      // ✔ Interests match
-      if (
-        userPrefrence.interests?.some(
-          (tag) =>
-            job.metaTags?.includes(tag) ||
-            job.searchKeywords?.includes(tag)
+        interests.some(tag =>
+          job.searchKeywords?.some(k =>
+            k.toLowerCase().includes(tag)
+          )
         )
       ) {
         score += 30;
       }
 
-      return { ...job, score };
+      return {
+        _id: job._id,
+        jobCode: job.jobCode,
+        title: job.title,
+        department: job.department,
+        conductingBody: job.conductingBody,
+        location: job.location || job.locations,
+        totalVacancies: job.vacancies?.total || 0,
+        importantDates: job.importantDates,
+        score,
+      };
     });
 
-    // ------------------------------------------
-    // 🔥 Sort by score
-    // ------------------------------------------
-    rankedJobs.sort((a, b) => b.score - a.score);
+    // ----------------------------
+    // 6️⃣ SORT & RESPONSE
+    // ----------------------------
+    scoredJobs.sort((a, b) => b.score - a.score);
 
-    const finalJobs = rankedJobs.map((value)=>{
-      return{
-          _id: value._id,
-            title: value.title,
-        JobId: value.JobId,
-        organizationType:value.organizationType,
-        TotalPost: value.TotalPost,
-        score:value.score,
-        importantDates:value.importantDates,
-        
-      }
-    })
-
-    // ------------------------------------------
-    // 📤 Response
-    // ------------------------------------------
-    return res.json({
-      
-      data: finalJobs,
+    return res.status(200).json({
+      status: "success",
+      totalMatched: jobs.length,
+      recommendedCount: scoredJobs.length,
+      data: scoredJobs,
     });
+
   } catch (err) {
-    console.error("Recommendation Error:", err);
-    res.status(500).json({
+    console.error("❌ Recommendation Error:", err);
+    return res.status(500).json({
       status: "error",
-      message: "Failed to process recommendation",
+      message: "Failed to recommend jobs",
       error: err.message,
     });
   }
 };
+
+
+
 
 
 module.exports ={
