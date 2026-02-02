@@ -339,7 +339,6 @@ const JobsSchemaDatas = mongoose.model("jobs", JobsSchema)
 
 
 
-// user prefrence schema 
 
 
 const UserPreferenceSchema = new mongoose.Schema(
@@ -355,21 +354,28 @@ const UserPreferenceSchema = new mongoose.Schema(
     // 🎓 EDUCATION (maps to eligibility.education)
     education: {
       levels: {
-        type: [String], // ["graduate", "12th pass"]
+        type: [String], 
+        // examples: ["10th", "12th", "graduate", "diploma", "bachelor", "master"]
         default: [],
         index: true,
       },
       stream: {
-        type: String, // science, arts, commerce, engineering
+        type: [String], 
+        // examples: ["science", "arts", "commerce", "engineering"]
+        default: [],
+        index: true,
       },
       specialization: {
-        type: String,
+        type: [String], 
+        // examples: ["civil", "mechanical", "computer science"]
+        default: [],
       },
     },
 
-    // 🌍 LOCATION (maps to locations[])
+    // 📍 LOCATION (maps to job.locations[])
     preferredLocations: {
-      type: [String], // ["Uttar Pradesh", "All India"]
+      type: [String], 
+      // ["Uttar Pradesh", "Delhi", "All India"]
       default: ["All India"],
       index: true,
     },
@@ -379,6 +385,7 @@ const UserPreferenceSchema = new mongoose.Schema(
       type: String,
       enum: ["gen", "obc", "sc", "st", "ews"],
       lowercase: true,
+      index: true,
     },
 
     // 🚻 GENDER (maps to eligibility.gender)
@@ -391,41 +398,26 @@ const UserPreferenceSchema = new mongoose.Schema(
 
     // 🏛 ORGANIZATION TYPE (maps to organization.type)
     organizationTypes: {
-      type: [String], // ["police", "banking"]
+      type: [String], 
+      // ["police", "railway", "banking", "teaching"]
       default: [],
       index: true,
     },
 
-    // 🔍 INTEREST TAGS (maps to metaTags & searchKeywords)
+    // 🧠 INTERESTS (maps to metaTags & searchKeywords)
     interests: {
-      type: [String],
+      type: [String], 
+      // ["constable", "technical", "government", "clerk"]
       default: [],
       index: true,
     },
+
+  
   },
   { timestamps: true }
 );
 
-
-
-
-
-
-
-
-const UserprefrenceData = mongoose.model("userPreferences", UserPreferenceSchema);
-
-
-
-
-
-// Get the jobs according tho the user data 
-
-
-
-
-
-
+const UserprefrenceData = mongoose.model("userpreferences", UserPreferenceSchema);
 
 
 module.exports = { 

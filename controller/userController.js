@@ -53,290 +53,256 @@ const GetSaveData = async (req, res) => {
 
 const Savepreferences = async (req, res) => {
   try {
-    // userId comes from authMiddleware using cookies.token
     const userId = req.user._id;
 
-  
-
-
-
     const {
-      educationLevel,
-      educationStream,
-      specialization,
-      preferredState,
+      educationLevels = [],
+      educationStreams = [],
+      specializations = [],
+      preferredLocations = ["All India"],
       category,
-      gender,
-      organizationType,
-      department,
-      experience,
-      interests
+      gender = "any",
+      organizationTypes = [],
+      interests = [],
+     
     } = req.body;
 
-    // Validation: At least education or state or category must be filled
-    if (!educationLevel && !preferredState && !category) {
+    //  Minimum data check
+    if (
+      educationLevels.length === 0 &&
+      organizationTypes.length === 0 &&
+      interests.length === 0
+    ) {
       return res.status(400).json({
         status: "error",
-        message: "Please provide at least one preference field."
+        message: "Please provide at least education, organization type, or interests.",
       });
     }
 
-    // Prepare data object
-    const preferenceData = {
+    const preferencePayload = {
       userId,
-      educationLevel,
-      educationStream,
-      specialization,
-      preferredState,
+      education: {
+        levels: educationLevels,
+        stream: educationStreams,
+        specialization: specializations,
+      },
+      preferredLocations,
       category,
       gender,
-      organizationType,
-      department,
-      experience,
-      interests
+      organizationTypes,
+      interests,
+    
     };
 
-    // Save or Update (upsert)
     const savedPreference = await UserprefrenceData.findOneAndUpdate(
       { userId },
-      preferenceData,
-      { new: true, upsert: true } // Create if not exists
+      { $set: preferencePayload },
+      { new: true, upsert: true },
     );
 
     return res.status(200).json({
       status: "success",
-      message: "User preferences saved successfully.",
-      data: savedPreference
+      message: "User preferences saved successfully",
+      data: savedPreference,
     });
 
-  } catch (err) {
-    console.error("Preference Error:", err);
+  } catch (error) {
+    console.error("SavePreferences Error:", error);
     return res.status(500).json({
       status: "error",
-      message: "Failed to save preferences.",
-      error: err.message
+      message: "Failed to save user preferences",
     });
   }
 };
 
 
-// ===============================
-// 🎯 EDUCATION ORDER (LOW → HIGH)
-// ===============================
-const EDUCATION_ORDER = [
-  "10th",
-  "12th",
-  "iti",
-  "diploma",
-  "graduate",
-  "post graduate",
-];
 
-// ===============================
-// 🧠 UTILITY: allowed education
-// Graduate → 12th jobs allowed
-// ===============================
-function getAllowedEducationLevels(userLevels = []) {
-  if (!userLevels.length) return [];
 
-  const maxIndex = Math.max(
-    ...userLevels.map(l =>
-      EDUCATION_ORDER.indexOf(l.toLowerCase())
-    )
-  );
 
-  if (maxIndex === -1) return [];
-
-  return EDUCATION_ORDER.slice(0, maxIndex + 1);
-}
-
-// ===============================
 // 🚀 RECOMMEND JOBS CONTROLLER
- recommendJobsController = async (req, res) => {
+
+const educationRank = {
+  "10th": 1,
+  "12th": 2,
+  "diploma": 3,
+  "graduate": 4,
+  "postgraduate": 5,
+};
+
+
+// ===============================
+const recommendJobsController = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // ----------------------------
-    // 1️⃣ FETCH USER PREFERENCE
-    // ----------------------------
-    const preference = await UserprefrenceData
-      .findOne({ userId })
-      .lean();
-
-    if (!preference) {
+    const userPref = await UserprefrenceData.findOne({ userId });
+    if (!userPref) {
       return res.status(404).json({
         status: "error",
         message: "User preferences not found",
       });
     }
 
-    // ----------------------------
-    // 2️⃣ NORMALIZE USER DATA
-    // ----------------------------
-    const userEducationLevels =
-      preference.education?.levels?.map(l => l.toLowerCase()) || [];
+    const {
+      preferredLocations = [],
+      organizationTypes = [],
+      interests = [],
+    } = userPref;
 
-    const allowedEducationLevels =
-      getAllowedEducationLevels(userEducationLevels);
+    // normalize user inputs
+    const normalizedLocations = preferredLocations.map(l => l.toLowerCase());
+    const normalizedOrgTypes = organizationTypes.map(o => o.toLowerCase());
+    const normalizedInterests = interests.map(i => i.toLowerCase());
 
-    const userLocations =
-      preference.preferredLocations?.length
-        ? preference.preferredLocations
-        : ["All India"];
+    const jobs = await JobsSchemaDatas.aggregate([
+      // 1️⃣ Active jobs only
+      {
+        $match: { isActive: true },
+      },
 
-    const userCategory = preference.category; // gen | obc | sc | st | ews
-    const userGender = preference.gender || "any";
-
-    const orgTypes =
-      preference.organizationTypes?.map(o => o.toLowerCase()) || [];
-
-    const interests =
-      preference.interests?.map(i => i.toLowerCase()) || [];
-
-    // ----------------------------
-    // 3️⃣ BUILD SAFE FILTER QUERY
-    // ----------------------------
-    const filterQuery = {
-      isActive: true,
-
-      // application not expired
-      "importantDates.applyEnd": { $gte: new Date() },
-
-      // EDUCATION (ARRAY SAFE + RANK LOGIC)
-      ...(allowedEducationLevels.length && {
-        "eligibility.education": {
-          $elemMatch: {
-            level: { $in: allowedEducationLevels },
+      // 2️⃣ LOCATION MATCH (SOFT)
+      {
+        $addFields: {
+          locationMatch: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: [{ $toLower: "$location" }, "all india"] },
+                  { $in: ["central", normalizedLocations] },
+                  {
+                    $in: [
+                      { $toLower: "$location" },
+                      normalizedLocations,
+                    ],
+                  },
+                ],
+              },
+              true,
+              false,
+            ],
           },
         },
-      }),
+      },
 
-      // LOCATION (OLD + NEW SCHEMA)
-      $or: [
-        { location: { $in: userLocations } },   // legacy
-        { locations: { $in: userLocations } },  // future
-      ],
+      // 3️⃣ ORGANIZATION MATCH (STRONG)
+      {
+        $addFields: {
+          organizationMatch: {
+            $gt: [
+              {
+                $size: {
+                  $setIntersection: [
+                    {
+                      $map: {
+                        input: {
+                          $concatArrays: [
+                            { $ifNull: ["$tags", []] },
+                            { $ifNull: ["$jobDomains", []] },
+                            [{ $ifNull: ["$conductingBody", ""] }],
+                            [{ $ifNull: ["$department", ""] }],
+                          ],
+                        },
+                        as: "o",
+                        in: { $toLower: "$$o" },
+                      },
+                    },
+                    normalizedOrgTypes,
+                  ],
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
 
-      // JOB DOMAIN (Police / Banking / etc.)
-      ...(orgTypes.length && {
-        jobDomains: { $in: orgTypes },
-      }),
+      // 4️⃣ INTEREST MATCH
+      {
+        $addFields: {
+          interestMatch: {
+            $gt: [
+              {
+                $size: {
+                  $setIntersection: [
+                    {
+                      $map: {
+                        input: { $ifNull: ["$tags", []] },
+                        as: "t",
+                        in: { $toLower: "$$t" },
+                      },
+                    },
+                    normalizedInterests,
+                  ],
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
 
-      // INTEREST KEYWORDS
-      ...(interests.length && {
-        searchKeywords: { $in: interests },
-      }),
-    };
+      // 5️⃣ FINAL SCORE (SOFT SCORING)
+      {
+        $addFields: {
+          matchScore: {
+            $add: [
+              { $cond: ["$locationMatch", 25, 0] },
+              { $cond: ["$organizationMatch", 45, 0] },
+              { $cond: ["$interestMatch", 30, 0] },
+            ],
+          },
+        },
+      },
 
-    // ----------------------------
-    // 4️⃣ FETCH JOBS
-    // ----------------------------
-    const jobs = await JobsSchemaDatas
-      .find(filterQuery)
-      .lean();
+      // 6️⃣ MINIMUM SCORE (NOT STRICT)
+      {
+        $match: {
+          matchScore: { $gte: 30 },
+        },
+      },
 
-    // ----------------------------
-    // 5️⃣ SCORING ENGINE
-    // ----------------------------
-    const scoredJobs = jobs.map(job => {
-      let score = 0;
+      // 7️⃣ SORT BEST MATCH
+      {
+        $sort: { matchScore: -1, updatedAt: -1 },
+      },
 
-      // 🎓 EDUCATION SCORE
-      if (
-        job.eligibility?.education?.some(e =>
-          allowedEducationLevels.includes(
-            String(e.level).toLowerCase()
-          )
-        )
-      ) {
-        score += 30;
-      }
+      // 8️⃣ LIMIT
+      {
+        $limit: 20,
+      },
 
-      // 🌍 LOCATION SCORE
-      if (
-        (job.location &&
-          userLocations.includes(job.location)) ||
-        (job.locations &&
-          job.locations.some(l =>
-            userLocations.includes(l)
-          ))
-      ) {
-        score += 20;
-      }
-
-      // 👤 CATEGORY SCORE
-      if (
-        userCategory &&
-        job.vacancies?.breakup?.some(b =>
-          b.categoryWise &&
-          Object.keys(b.categoryWise)
-            .map(k => k.toLowerCase())
-            .includes(userCategory)
-        )
-      ) {
-        score += 10;
-      }
-
-      // 🚻 GENDER SCORE
-      // (no strict gender filter in DB → allow all)
-      score += 10;
-
-      // 🏛 DOMAIN SCORE
-      if (
-        job.jobDomains?.some(d =>
-          orgTypes.includes(
-            String(d).toLowerCase()
-          )
-        )
-      ) {
-        score += 10;
-      }
-
-      // 🔍 INTEREST SCORE
-      if (
-        interests.some(tag =>
-          job.searchKeywords?.some(k =>
-            k.toLowerCase().includes(tag)
-          )
-        )
-      ) {
-        score += 30;
-      }
-
-      return {
-        _id: job._id,
-        jobCode: job.jobCode,
-        title: job.title,
-        department: job.department,
-        conductingBody: job.conductingBody,
-        location: job.location || job.locations,
-        totalVacancies: job.vacancies?.total || 0,
-        importantDates: job.importantDates,
-        score,
-      };
-    });
-
-    // ----------------------------
-    // 6️⃣ SORT & RESPONSE
-    // ----------------------------
-    scoredJobs.sort((a, b) => b.score - a.score);
+      // 9️⃣ RESPONSE SHAPE (ONLY REQUIRED DATA)
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          conductingBody: 1,
+          "vacancies.total": 1,
+          "importantDates.applyStart": 1,
+          "importantDates.applyEnd": 1,
+        },
+      },
+    ]);
 
     return res.status(200).json({
       status: "success",
-      totalMatched: jobs.length,
-      recommendedCount: scoredJobs.length,
-      data: scoredJobs,
+      count: jobs.length,
+      data: jobs,
     });
 
-  } catch (err) {
-    console.error("❌ Recommendation Error:", err);
+  } catch (error) {
+    console.error("❌ Recommendation Error:", error);
     return res.status(500).json({
       status: "error",
       message: "Failed to recommend jobs",
-      error: err.message,
+      error: error.message,
     });
   }
 };
+
+
+
+
 
 
 
