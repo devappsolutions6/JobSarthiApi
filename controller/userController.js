@@ -155,12 +155,12 @@ const recommendJobsController = async (req, res) => {
     const normalizedInterests = interests.map(i => i.toLowerCase());
 
     const jobs = await JobsSchemaDatas.aggregate([
-      // 1️⃣ Active jobs only
+      // 1 Active jobs only
       {
         $match: { isActive: true },
       },
 
-      // 2️⃣ LOCATION MATCH (SOFT)
+      // 2 LOCATION MATCH (SOFT)
       {
         $addFields: {
           locationMatch: {
@@ -184,7 +184,7 @@ const recommendJobsController = async (req, res) => {
         },
       },
 
-      // 3️⃣ ORGANIZATION MATCH (STRONG)
+      // 3 ORGANIZATION MATCH (STRONG)
       {
         $addFields: {
           organizationMatch: {
@@ -216,7 +216,7 @@ const recommendJobsController = async (req, res) => {
         },
       },
 
-      // 4️⃣ INTEREST MATCH
+      // 4 INTEREST MATCH
       {
         $addFields: {
           interestMatch: {

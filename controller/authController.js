@@ -15,16 +15,16 @@ const userSignupController = async (req, res) => {
     // 1. Sanitize and validate input
     const body = req.body || {};
   const {
-  FirstName,
-  LastName,
-  Email,
-  Password,
+  firstName,
+  lastName,
+  email,
+  password,
 } = req.body;
 
-const sanitizedFirstName = FirstName?.trim();
-const sanitizedLastName = LastName?.trim();
-const sanitizedEmail = Email?.trim().toLowerCase();
-const password = Password;
+const sanitizedFirstName = firstName?.trim();
+const sanitizedLastName = lastName?.trim();
+const sanitizedEmail = email?.trim().toLowerCase();
+
 
  
 
@@ -40,7 +40,7 @@ const password = Password;
       return res.status(400).json({
         status: "error",
         errors,
-      });
+      }); 
     }
 
     // 2. Check for existing user
@@ -70,10 +70,10 @@ const password = Password;
 
     // 5. Create new user with sanitized data
     const newUser = new UserSignupSchemaDatas({
-      FirstName: sanitizedFirstName,
-      LastName: sanitizedLastName,
-      Email: sanitizedEmail,
-      Password: hashedPassword,
+      firstName: sanitizedFirstName,
+      lastName: sanitizedLastName,
+      email: sanitizedEmail,
+      password: hashedPassword,
       verificationToken,
       createdAt: new Date(),
     });

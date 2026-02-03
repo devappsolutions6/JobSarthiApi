@@ -47,10 +47,10 @@ const ResultCardData = mongoose.model("result", ResultSchema);
 // user Singnup Api
 
 const UserSignupSchema = new mongoose.Schema({
-  FirstName: { type: String, required: true },
-  LastName: { type: String},
-  Email: { type: String, required: true, unique: true },
-  Password: { type: String, required: true },
+  firstName: { type: String, required: true },
+  lastName: { type: String},
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
   isVerified: { type: Boolean, default: false },
   verificationToken: { type: String },
 });
