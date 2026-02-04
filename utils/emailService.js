@@ -17,16 +17,16 @@ const sendVerificationEmail = async (user, verificationToken) => {
 
     const mailOptions = {
         from: {
-            name: 'JobSarthi Team',
+            name: 'AspirantCareer Team',
             address: process.env.EMAIL_USER
         },
         to: user.Email,
-        subject: "Verify Your Email - JobSarthi",
+        subject: "Verify Your Email - AspirantCareer",
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #1a73e8;">Welcome to JobSarthi!</h2>
+                <h2 style="color: #1a73e8;">Welcome to AspirantCareer!</h2>
                 <h3>Hello ${user.FirstName},</h3>
-                <p>Thank you for registering with JobSarthi. To complete your registration, please verify your email address by clicking the button below:</p>
+                <p>Thank you for registering with AspirantCareer. To complete your registration, please verify your email address by clicking the button below:</p>
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="${verifyUrl}" 
                        style="background-color: #1a73e8; 

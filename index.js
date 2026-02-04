@@ -25,7 +25,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",           // local development
-      "https://jobsarthi.vercel.app",    // production frontend
+      "https://www.aspirantcareer.in/",    // production frontend
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
