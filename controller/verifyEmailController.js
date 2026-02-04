@@ -7,7 +7,7 @@ const verifyEmailController = async (req, res) => {
     if (!token) return res.status(400).json({ status: "error", message: "Token is missing" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await UserSignupSchemaDatas.findOne({ Email: decoded.email });
+    const user = await UserSignupSchemaDatas.findOne({ email: decoded.email });
 
     if (!user) return res.status(400).json({ status: "error", message: "User not found" });
 
@@ -20,7 +20,7 @@ const verifyEmailController = async (req, res) => {
 
     // Generate login auth token
     const authToken = jwt.sign(
-      { userId: user._id, email: user.Email },
+      { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -44,7 +44,7 @@ const verifyEmailController = async (req, res) => {
           _id: user._id,
           firstName: user.FirstName,
           lastName: user.LastName,
-          email: user.Email,
+          email: user.email,
         },
         token: authToken, 
       },

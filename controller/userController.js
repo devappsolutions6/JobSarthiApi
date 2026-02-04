@@ -12,9 +12,9 @@ const profileController = async (req, res) => {
 
     const safeUser = {
       id: user._id,
-      firstName: user.FirstName,
-      lastName: user.LastName,
-      email: user.Email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
       isVerified: user.isVerified,
       createdAt: user.createdAt,
       lastLogin: user.lastLogin || null,

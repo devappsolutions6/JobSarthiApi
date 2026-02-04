@@ -152,8 +152,13 @@ const userLoginController = async (req, res) => {
 
     // Find user by email
     const user = await UserSignupSchemaDatas.findOne({
-      Email: normalizedEmail,
+      email: normalizedEmail,
     });
+
+   
+console.log("DB Email:", user?.email);
+console.log("Input Email:", normalizedEmail);
+console.log("DB Password:", user?.password);
 
     if (!user) {
       return res
@@ -173,16 +178,17 @@ const userLoginController = async (req, res) => {
     }
 
     // Compare password
-    const isMatch = await bcrypt.compare(password, user.Password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res
         .status(401)
         .json({ status: "error", message: "Invalid email or password" });
     }
 
+
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id, email: user.Email },
+      { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
@@ -213,9 +219,9 @@ return res.status(200).json({
   data: {
     user: {
       id: user._id,
-      firstName: user.FirstName,
-      lastName: user.LastName,
-      email: user.Email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
       token
     },
   },
