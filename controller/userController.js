@@ -246,15 +246,15 @@ const recommendJobsController = async (req, res) => {
         $addFields: {
           matchScore: {
             $add: [
-              { $cond: ["$locationMatch", 25, 0] },
-              { $cond: ["$organizationMatch", 45, 0] },
+              { $cond: ["$locationMatch", 35, 0] },
+              { $cond: ["$organizationMatch", 35, 0] },
               { $cond: ["$interestMatch", 30, 0] },
             ],
           },
         },
       },
 
-      // 6️⃣ MINIMUM SCORE (NOT STRICT)
+      //  MINIMUM SCORE (NOT STRICT)
       {
         $match: {
           matchScore: { $gte: 30 },
@@ -268,7 +268,7 @@ const recommendJobsController = async (req, res) => {
 
       // 8️⃣ LIMIT
       {
-        $limit: 20,
+        $limit: 30,
       },
 
       // 9️⃣ RESPONSE SHAPE (ONLY REQUIRED DATA)
