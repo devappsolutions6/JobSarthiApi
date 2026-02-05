@@ -105,6 +105,8 @@ const JobsSchema = new mongoose.Schema(
         {
           level: String, // Post / Cadre / Force / Class
           name: String, // Constable GD / PGT / IMA
+        //  Post-wise total vacancies (if available)
+      posts: { type: Number },
 
           categoryWise: {
             gen: Number,
