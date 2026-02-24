@@ -1,19 +1,15 @@
-const { response } = require("express");
 const {
-  UserData,
   JobsSchemaDatas,
   AdmitCardData,
   ResultCardData,
-  YourJobsSchemaDatas,
-
   UserSignupSchemaDatas,
-  userDataSchemasDatas,
   UserprefrenceData,
 } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validateSignupInput } = require("../utils/validation");
 const { sendVerificationEmail } = require("../utils/emailService");
+const { getCache, setCache } = require("../utils/cache");
 
 
 
@@ -52,15 +48,29 @@ const _getAnnouncement = async (req, res) => {
   }
 };
 
-// 1. All Jobs
+// 1. All Jobs — with pagination and search
 const getJobs = async (req, res) => {
   try {
-    const jobs = await JobsSchemaDatas.find();
-    res.json({ message: "All jobs fetched", data: jobs });
+    const { page = 1, limit = 20, search } = req.query;
+    const filter = { isActive: true };
+    if (search) filter.title = { $regex: search, $options: "i" };
+
+    const cacheKey = `jobs_p${page}_l${limit}_s${search || ""}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json({ message: "All jobs fetched", ...cached, fromCache: true });
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [jobs, total] = await Promise.all([
+      JobsSchemaDatas.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      JobsSchemaDatas.countDocuments(filter),
+    ]);
+
+    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: jobs };
+    await setCache(cacheKey, payload, 300);
+
+    res.json({ message: "All jobs fetched", ...payload });
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Error fetching jobs", details: error.message });
+    res.status(500).json({ error: "Error fetching jobs", details: error.message });
   }
 };
 
@@ -117,11 +127,26 @@ const getHomePageJobs = async (req, res) => {
 
 const getAdmitCard = async (req, res) => {
   try {
-    const admitCards = await AdmitCardData.find();
-    res.json({
-      message: "All Admit Card Data",
-      data: admitCards,
-    });
+    const { page = 1, limit = 20, category, search } = req.query;
+
+    const filter = {};
+    if (category) filter.category = category;
+    if (search) filter.title = { $regex: search, $options: "i" };
+
+    const cacheKey = `admitcards_p${page}_l${limit}_c${category || ""}_s${search || ""}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json({ message: "All Admit Card Data", ...cached, fromCache: true });
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [admitCards, total] = await Promise.all([
+      AdmitCardData.find(filter).sort({ releaseDate: -1 }).skip(skip).limit(Number(limit)),
+      AdmitCardData.countDocuments(filter),
+    ]);
+
+    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: admitCards };
+    await setCache(cacheKey, payload, 300);
+
+    res.json({ message: "All Admit Card Data", ...payload });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -129,13 +154,28 @@ const getAdmitCard = async (req, res) => {
 
 const getResultCard = async (req, res) => {
   try {
-    const result = await ResultCardData.find();
-    res.json({
-      message: "All Result Data",
-      data: result,
-    });
+    const { page = 1, limit = 20, category, search } = req.query;
+
+    const filter = {};
+    if (category) filter.category = category;
+    if (search) filter.title = { $regex: search, $options: "i" };
+
+    const cacheKey = `results_p${page}_l${limit}_c${category || ""}_s${search || ""}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json({ message: "All Result Data", ...cached, fromCache: true });
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const [result, total] = await Promise.all([
+      ResultCardData.find(filter).sort({ ReleaseDate: -1 }).skip(skip).limit(Number(limit)),
+      ResultCardData.countDocuments(filter),
+    ]);
+
+    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: result };
+    await setCache(cacheKey, payload, 300);
+
+    res.json({ message: "All Result Data", ...payload });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 

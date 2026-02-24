@@ -42,8 +42,8 @@ const verifyEmailController = async (req, res) => {
       data: {
         user: {
           _id: user._id,
-          firstName: user.FirstName,
-          lastName: user.LastName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
         },
         token: authToken, 

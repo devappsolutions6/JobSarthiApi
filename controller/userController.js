@@ -119,8 +119,8 @@ const Savepreferences = async (req, res) => {
 
 
 
-// 🚀 RECOMMEND JOBS CONTROLLER
-
+// Education rank: higher rank means higher qualification
+// A user with higher education is also eligible for lower-level jobs
 const educationRank = {
   "10th": 1,
   "12th": 2,
@@ -129,8 +129,6 @@ const educationRank = {
   "postgraduate": 5,
 };
 
-
-// ===============================
 const recommendJobsController = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -139,147 +137,224 @@ const recommendJobsController = async (req, res) => {
     if (!userPref) {
       return res.status(404).json({
         status: "error",
-        message: "User preferences not found",
+        message: "User preferences not found. Please set your preferences first.",
       });
     }
 
     const {
+      education = {},
       preferredLocations = [],
       organizationTypes = [],
       interests = [],
     } = userPref;
 
-    // normalize user inputs
+    // Normalize all user inputs to lowercase
+    const educationLevels = (education.levels || []).map(l => l.toLowerCase());
+    const educationStreams = (education.stream || []).map(s => s.toLowerCase());
     const normalizedLocations = preferredLocations.map(l => l.toLowerCase());
     const normalizedOrgTypes = organizationTypes.map(o => o.toLowerCase());
     const normalizedInterests = interests.map(i => i.toLowerCase());
 
+    // Cascade education: a graduate is also eligible for 12th/10th/diploma jobs
+    const userMaxEduRank = educationLevels.reduce(
+      (max, lvl) => Math.max(max, educationRank[lvl] || 0),
+      0
+    );
+    const eligibleEduLevels =
+      userMaxEduRank > 0
+        ? Object.keys(educationRank).filter(k => educationRank[k] <= userMaxEduRank)
+        : educationLevels;
+
+    // If user selected "All India" (or no location), all job locations match
+    const wantsAllIndia =
+      normalizedLocations.length === 0 ||
+      normalizedLocations.includes("all india");
+
+    const today = new Date();
+
+    // Build location match expression for the aggregation pipeline
+    const locationMatchExpr = wantsAllIndia
+      ? { $literal: true }
+      : {
+          $cond: [
+            {
+              $or: [
+                { $eq: [{ $toLower: "$location" }, "all india"] },
+                { $in: [{ $toLower: "$location" }, normalizedLocations] },
+              ],
+            },
+            true,
+            false,
+          ],
+        };
+
+    // Build education level match expression
+    const eduLevelMatchExpr =
+      eligibleEduLevels.length > 0
+        ? {
+            $gt: [
+              {
+                $size: {
+                  $setIntersection: [
+                    {
+                      $map: {
+                        input: { $ifNull: ["$eligibility.education", []] },
+                        as: "e",
+                        in: { $toLower: { $ifNull: ["$$e.level", ""] } },
+                      },
+                    },
+                    eligibleEduLevels,
+                  ],
+                },
+              },
+              0,
+            ],
+          }
+        : { $literal: false };
+
+    // Build education stream match expression (bonus points)
+    const eduStreamMatchExpr =
+      educationStreams.length > 0
+        ? {
+            $gt: [
+              {
+                $size: {
+                  $setIntersection: [
+                    {
+                      $map: {
+                        input: { $ifNull: ["$eligibility.education", []] },
+                        as: "e",
+                        in: { $toLower: { $ifNull: ["$$e.stream", ""] } },
+                      },
+                    },
+                    educationStreams,
+                  ],
+                },
+              },
+              0,
+            ],
+          }
+        : { $literal: false };
+
+    // Sentinel array used when user has no preference — prevents false matches
+    const NO_MATCH = ["__no_match__"];
+
     const jobs = await JobsSchemaDatas.aggregate([
-      // 1 Active jobs only
+      // 1. Active jobs only + filter out expired applications
       {
-        $match: { isActive: true },
+        $match: {
+          isActive: true,
+          $or: [
+            { "importantDates.applyEnd": { $gte: today } },
+            { "importantDates.applyEnd": { $exists: false } },
+            { "importantDates.applyEnd": null },
+          ],
+        },
       },
 
-      // 2 LOCATION MATCH (SOFT)
+      // 2. Compute individual match signals
       {
         $addFields: {
-          locationMatch: {
-            $cond: [
-              {
-                $or: [
-                  { $eq: [{ $toLower: "$location" }, "all india"] },
-                  { $in: ["central", normalizedLocations] },
-                  {
-                    $in: [
-                      { $toLower: "$location" },
-                      normalizedLocations,
-                    ],
+          // Education level match (cascading — graduate can see 12th jobs too)
+          eduLevelMatch: eduLevelMatchExpr,
+
+          // Education stream match (bonus)
+          eduStreamMatch: eduStreamMatchExpr,
+
+          // Location match
+          locationMatch: locationMatchExpr,
+
+          // Org type: count how many of user's org types match job domains/tags
+          orgMatchCount: {
+            $size: {
+              $setIntersection: [
+                {
+                  $map: {
+                    input: {
+                      $concatArrays: [
+                        { $ifNull: ["$jobDomains", []] },
+                        { $ifNull: ["$tags", []] },
+                        [{ $ifNull: ["$conductingBody", ""] }],
+                        [{ $ifNull: ["$department", ""] }],
+                      ],
+                    },
+                    as: "o",
+                    in: { $toLower: "$$o" },
                   },
-                ],
-              },
-              true,
-              false,
-            ],
-          },
-        },
-      },
-
-      // 3 ORGANIZATION MATCH (STRONG)
-      {
-        $addFields: {
-          organizationMatch: {
-            $gt: [
-              {
-                $size: {
-                  $setIntersection: [
-                    {
-                      $map: {
-                        input: {
-                          $concatArrays: [
-                            { $ifNull: ["$tags", []] },
-                            { $ifNull: ["$jobDomains", []] },
-                            [{ $ifNull: ["$conductingBody", ""] }],
-                            [{ $ifNull: ["$department", ""] }],
-                          ],
-                        },
-                        as: "o",
-                        in: { $toLower: "$$o" },
-                      },
-                    },
-                    normalizedOrgTypes,
-                  ],
                 },
-              },
-              0,
-            ],
+                normalizedOrgTypes.length > 0 ? normalizedOrgTypes : NO_MATCH,
+              ],
+            },
           },
-        },
-      },
 
-      // 4 INTEREST MATCH
-      {
-        $addFields: {
-          interestMatch: {
-            $gt: [
-              {
-                $size: {
-                  $setIntersection: [
-                    {
-                      $map: {
-                        input: { $ifNull: ["$tags", []] },
-                        as: "t",
-                        in: { $toLower: "$$t" },
-                      },
+          // Interest: count matches across tags AND searchKeywords
+          interestMatchCount: {
+            $size: {
+              $setIntersection: [
+                {
+                  $map: {
+                    input: {
+                      $concatArrays: [
+                        { $ifNull: ["$tags", []] },
+                        { $ifNull: ["$searchKeywords", []] },
+                      ],
                     },
-                    normalizedInterests,
-                  ],
+                    as: "t",
+                    in: { $toLower: "$$t" },
+                  },
                 },
-              },
-              0,
-            ],
+                normalizedInterests.length > 0 ? normalizedInterests : NO_MATCH,
+              ],
+            },
           },
         },
       },
 
-      // 5️⃣ FINAL SCORE (SOFT SCORING)
+      // 3. Calculate final match score (max 110 pts)
+      //    Education level  : 30 pts
+      //    Education stream : 10 pts (bonus)
+      //    Location         : 20 pts
+      //    Org type         :  8 pts per match, capped at 25
+      //    Interests        :  5 pts per match, capped at 25
       {
         $addFields: {
           matchScore: {
             $add: [
-              { $cond: ["$locationMatch", 35, 0] },
-              { $cond: ["$organizationMatch", 35, 0] },
-              { $cond: ["$interestMatch", 30, 0] },
+              { $cond: ["$eduLevelMatch", 30, 0] },
+              { $cond: ["$eduStreamMatch", 10, 0] },
+              { $cond: ["$locationMatch", 20, 0] },
+              { $min: [{ $multiply: ["$orgMatchCount", 8] }, 25] },
+              { $min: [{ $multiply: ["$interestMatchCount", 5] }, 25] },
             ],
           },
         },
       },
 
-      //  MINIMUM SCORE (NOT STRICT)
+      // 4. At least one signal must match (score >= 20)
       {
-        $match: {
-          matchScore: { $gte: 30 },
-        },
+        $match: { matchScore: { $gte: 20 } },
       },
 
-      // 7️⃣ SORT BEST MATCH
+      // 5. Best match first; among ties, soonest-closing jobs come first
       {
-        $sort: { matchScore: -1, updatedAt: -1 },
+        $sort: { matchScore: -1, "importantDates.applyEnd": 1, updatedAt: -1 },
       },
 
-      // 8️⃣ LIMIT
-      {
-        $limit: 30,
-      },
+      // 6. Limit results
+      { $limit: 30 },
 
-      // 9️⃣ RESPONSE SHAPE (ONLY REQUIRED DATA)
+      // 7. Response shape
       {
         $project: {
           _id: 1,
           title: 1,
           conductingBody: 1,
+          location: 1,
+          jobDomains: 1,
           "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
+          matchScore: 1,
         },
       },
     ]);
@@ -291,7 +366,7 @@ const recommendJobsController = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Recommendation Error:", error);
+    console.error("Recommendation Error:", error);
     return res.status(500).json({
       status: "error",
       message: "Failed to recommend jobs",
