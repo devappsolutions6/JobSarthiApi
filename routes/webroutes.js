@@ -12,7 +12,8 @@ const {
 
 const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
 const {
-  verifyEmailController,
+  verifyOtpController,
+  resendOtpController,
 } = require("../controller/verifyEmailController");
 
 const authMiddleware = require("../middleware/auth");
@@ -45,7 +46,8 @@ router.get("/Jobs-category/:type",JobCategoryController)
 // Auth Related Routes
 // ------------------------------
 router.post("/userSignup", signupLimiter, userSignupController);
-router.get("/verify-email", verifyEmailController);
+router.post("/verify-otp", verifyOtpController);
+router.post("/resend-otp", resendOtpController);
 router.post("/login", loginLimiter, userLoginController);
 
 // ------------------------------

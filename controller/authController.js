@@ -2,31 +2,26 @@ const { UserSignupSchemaDatas } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validateSignupInput } = require("../utils/validation");
-const { sendVerificationEmail } = require("../utils/emailService");
+const { sendOtpEmail } = require("../utils/emailService");
 
 
 
 
-// user Singnup Api
-
+// user Signup Api
 
 const userSignupController = async (req, res) => {
   try {
-    // 1. Sanitize and validate input
     const body = req.body || {};
-  const {
-  firstName,
-  lastName,
-  email,
-  password,
-} = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+    } = req.body;
 
-const sanitizedFirstName = firstName?.trim();
-const sanitizedLastName = lastName?.trim();
-const sanitizedEmail = email?.trim().toLowerCase();
-
-
- 
+    const sanitizedFirstName = firstName?.trim();
+    const sanitizedLastName = lastName?.trim();
+    const sanitizedEmail = email?.trim().toLowerCase();
 
     // Validate input using the validation utility
     const { isValid, errors } = validateSignupInput(
@@ -40,12 +35,12 @@ const sanitizedEmail = email?.trim().toLowerCase();
       return res.status(400).json({
         status: "error",
         errors,
-      }); 
+      });
     }
 
-    // 2. Check for existing user
+    // Check for existing user
     const existingUser = await UserSignupSchemaDatas.findOne({
-      Email: sanitizedEmail,
+      email: sanitizedEmail,
     }).lean();
 
     if (existingUser) {
@@ -55,56 +50,45 @@ const sanitizedEmail = email?.trim().toLowerCase();
       });
     }
 
-    // 3. Hash password with appropriate cost factor
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // 4. Create verification token with appropriate expiry
-    const verificationToken = jwt.sign(
-      {
-        email: sanitizedEmail,
-        timestamp: Date.now(),
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+    // Generate 6-digit OTP with 10-minute expiry
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 5. Create new user with sanitized data
+    // Create new user
     const newUser = new UserSignupSchemaDatas({
       firstName: sanitizedFirstName,
       lastName: sanitizedLastName,
       email: sanitizedEmail,
       password: hashedPassword,
-      verificationToken,
+      otp,
+      otpExpiry,
       createdAt: new Date(),
     });
 
-    // 6. Save user to database
     await newUser.save();
 
-    // 7. Send verification email
+    // Send OTP email
     try {
-      await sendVerificationEmail(newUser, verificationToken);
+      await sendOtpEmail(newUser, otp);
     } catch (emailError) {
-      // If email fails, log it but don't fail the registration
-      console.error("Verification email failed:", emailError);
-      // You might want to implement a retry mechanism here
+      console.error("OTP email failed:", emailError);
     }
 
-    // 8. Return success response without sensitive data
     res.status(201).json({
       status: "success",
-      message:
-        "Account created successfully. Please check your email to verify your account.",
+      message: "Account created! Please check your email for the 6-digit OTP to verify your account.",
       data: {
         userId: newUser._id,
         email: sanitizedEmail,
-        requiresVerification: true,
+        requiresOtpVerification: true,
       },
     });
   } catch (error) {
     console.error("Signup error:", error);
 
-    // 9. Handle different types of errors appropriately
     if (error.name === "ValidationError") {
       return res.status(400).json({
         status: "error",
@@ -114,23 +98,18 @@ const sanitizedEmail = email?.trim().toLowerCase();
     }
 
     if (error.code === 11000) {
-      // Duplicate key error
       return res.status(409).json({
         status: "error",
         message: "An account with this email already exists",
       });
     }
 
-    // 10. Generic error response
     res.status(500).json({
       status: "error",
-      message:
-        "An error occurred while creating your account. Please try again later.",
+      message: "An error occurred while creating your account. Please try again later.",
     });
   }
 };
-
-
 
 
 
@@ -155,11 +134,6 @@ const userLoginController = async (req, res) => {
       email: normalizedEmail,
     });
 
-   
-console.log("DB Email:", user?.email);
-console.log("Input Email:", normalizedEmail);
-console.log("DB Password:", user?.password);
-
     if (!user) {
       return res
         .status(401)
@@ -172,8 +146,7 @@ console.log("DB Password:", user?.password);
         .status(403)
         .json({
           status: "error",
-          message:
-            "Email not verified. Please verify your email before logging in.",
+          message: "Email not verified. Please verify your email before logging in.",
         });
     }
 
@@ -185,7 +158,6 @@ console.log("DB Password:", user?.password);
         .json({ status: "error", message: "Invalid email or password" });
     }
 
-
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
@@ -193,41 +165,36 @@ console.log("DB Password:", user?.password);
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    // Optionally: update lastLogin timestamps
+    // Update lastLogin
     try {
       user.lastLogin = new Date();
       await user.save();
     } catch (e) {
-      // non-fatal
       console.warn("Could not update lastLogin:", e.message);
     }
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
-   res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,        // 🔥 production → https required
-  sameSite: "none",    // 🔥 required for cross-origin
-  path: "/",           // 🔥 required
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  
-});
+    return res.status(200).json({
+      status: "success",
+      message: "Login successful",
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          token
+        },
+      },
+    });
 
-
-return res.status(200).json({
-  status: "success",
-  message: "Login successful",
-  data: {
-    user: {
-      id: user._id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      token
-    },
-  },
-});
-
-   
   } catch (error) {
     console.error("Login error:", error);
     return res
