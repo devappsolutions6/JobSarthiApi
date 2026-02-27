@@ -10,7 +10,7 @@ const {
   JobCategoryController,
 } = require("../controller/webController");
 
-const { signupLimiter, loginLimiter } = require("../middleware/rateLimiter");
+const { signupLimiter, loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
 const {
   verifyOtpController,
   resendOtpController,
@@ -21,6 +21,11 @@ const {
   userSignupController,
   userLoginController,
 } = require("../controller/authController");
+const {
+  forgotPasswordController,
+  verifyResetOtpController,
+  resetPasswordController,
+} = require("../controller/forgotPasswordController");
 const {
   profileController,
   Savepreferences,
@@ -49,6 +54,9 @@ router.post("/userSignup", signupLimiter, userSignupController);
 router.post("/verify-otp", verifyOtpController);
 router.post("/resend-otp", resendOtpController);
 router.post("/login", loginLimiter, userLoginController);
+router.post("/forgot-password", forgotPasswordLimiter, forgotPasswordController);
+router.post("/verify-reset-otp", verifyResetOtpController);
+router.post("/reset-password", resetPasswordController);
 
 // ------------------------------
 // Protected Routes (Need Auth)

@@ -18,4 +18,13 @@ const loginLimiter = rateLimit({
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-module.exports = { signupLimiter, loginLimiter };
+// Forgot password rate limiter: max 5 OTP requests per 15 minutes per IP
+const forgotPasswordLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'Too many password reset requests from this IP, please try again after 15 minutes',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+module.exports = { signupLimiter, loginLimiter, forgotPasswordLimiter };
