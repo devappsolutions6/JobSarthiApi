@@ -287,6 +287,50 @@ const addExamCalendar = async (req, res) => {
 };
 
 
+// Search Jobs — suggestions API
+// GET /web/api/search?q=ssc&limit=8
+const searchJobs = async (req, res) => {
+  try {
+    const { q = "", limit = 8 } = req.query;
+    const query = q.trim();
+
+    if (!query) return res.json({ message: "Search results", data: [] });
+
+    const regex = { $regex: query, $options: "i" };
+
+    const jobs = await JobsSchemaDatas.find(
+      {
+        isActive: true,
+        $or: [
+          { title: regex },
+          { department: regex },
+          { conductingBody: regex },
+          { jobDomains: regex },
+          { tags: regex },
+          { searchKeywords: regex },
+          { location: regex },
+        ],
+      },
+      {
+        _id: 1,
+        title: 1,
+        department: 1,
+        conductingBody: 1,
+        jobDomains: 1,
+        location: 1,
+        "vacancies.total": 1,
+        "importantDates.applyEnd": 1,
+      }
+    )
+      .sort({ createdAt: -1 })
+      .limit(Math.min(Number(limit), 20));
+
+    res.json({ message: "Search results", data: jobs });
+  } catch (error) {
+    res.status(500).json({ error: "Search failed", details: error.message });
+  }
+};
+
 module.exports = {
   getHomePageJobs,
   getJobs,
@@ -298,4 +342,5 @@ module.exports = {
   JobCategoryController,
   getExamCalendar,
   addExamCalendar,
+  searchJobs,
 };

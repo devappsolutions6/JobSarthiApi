@@ -10,6 +10,7 @@ const {
   JobCategoryController,
   getExamCalendar,
   addExamCalendar,
+  searchJobs,
 } = require("../controller/webController");
 
 const { signupLimiter, loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
@@ -40,6 +41,7 @@ const router = express.Router();
 // ------------------------------
 // Public Routes (No Auth)
 // ------------------------------
+router.get("/search", searchJobs);
 router.get("/getJobs", getJobs);
 router.get("/hompageJobs", getHomePageJobs);
 router.get("/getJobs/:id", getJobById);
