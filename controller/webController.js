@@ -4,6 +4,7 @@ const {
   ResultCardData,
   UserSignupSchemaDatas,
   UserprefrenceData,
+  ExamCalendarData,
 } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -236,15 +237,65 @@ const JobCategoryController = async (req, res) => {
 
 
 
+// GET /exam-calendar
+// Query params: month (1-12), year (YYYY), category
+const getExamCalendar = async (req, res) => {
+  try {
+    const { month, year, category } = req.query;
+
+    const today = new Date();
+    const filter = { isActive: true };
+
+    if (month && year) {
+      // Filter by exact month and year
+      const from = new Date(Number(year), Number(month) - 1, 1);   // 1st of that month
+      const to   = new Date(Number(year), Number(month), 1);        // 1st of next month
+      filter.date = { $gte: from, $lt: to };
+    } else {
+      // Default: upcoming events in next 6 months
+      const sixMonthsLater = new Date(today);
+      sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+      filter.date = { $gte: today, $lte: sixMonthsLater };
+    }
+
+    if (category) filter.category = category;
+
+    const data = await ExamCalendarData.find(filter).sort({ date: 1 });
+
+    res.status(200).json({ message: "success", data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// POST /admin/exam-calendar
+const addExamCalendar = async (req, res) => {
+  try {
+    const { title, category, phase, date, description, officialLink } = req.body;
+
+    if (!title || !category || !phase || !date) {
+      return res.status(400).json({ error: "title, category, phase and date are required" });
+    }
+
+    const entry = await ExamCalendarData.create({ title, category, phase, date, description, officialLink });
+
+    res.status(201).json({ message: "Exam calendar entry added successfully", data: entry });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 module.exports = {
-   getHomePageJobs,
+  getHomePageJobs,
   getJobs,
   getJobById,
   _getAnnouncement,
   getAdmitCard,
   getResultCard,
- 
   logutController,
   JobCategoryController,
-  
+  getExamCalendar,
+  addExamCalendar,
 };

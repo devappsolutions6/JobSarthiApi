@@ -425,14 +425,39 @@ const UserPreferenceSchema = new mongoose.Schema(
 const UserprefrenceData = mongoose.model("userpreferences", UserPreferenceSchema);
 
 
-module.exports = { 
- 
-  AnnouncementData, 
+// Exam Calendar Schema
+const ExamCalendarSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    category: {
+      type: String,
+      required: true,
+      enum: ["SSC", "Railway", "Banking", "UPSC", "State", "Defence", "Police", "Teaching", "PSU", "Medical"],
+    },
+    phase: {
+      type: String,
+      required: true,
+      enum: ["application", "lastDate", "admitCard", "exam", "result"],
+    },
+    date: { type: Date, required: true },
+    description: { type: String },
+    officialLink: { type: String },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+ExamCalendarSchema.index({ date: 1, category: 1 });
+
+const ExamCalendarData = mongoose.model("examcalendar", ExamCalendarSchema);
+
+
+module.exports = {
+  AnnouncementData,
   JobsSchemaDatas,
-   AdmitCardData,
-   ResultCardData
-   ,UserSignupSchemaDatas,
-   UserprefrenceData
-
-
+  AdmitCardData,
+  ResultCardData,
+  UserSignupSchemaDatas,
+  UserprefrenceData,
+  ExamCalendarData,
 };

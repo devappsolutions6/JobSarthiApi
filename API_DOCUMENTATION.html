@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JobSarthi API Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fb;
+      color: #222;
+      font-size: 13px;
+    }
+
+    /* ── COVER PAGE ── */
+    .cover {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+      color: white;
+      text-align: center;
+      page-break-after: always;
+    }
+    .cover h1 { font-size: 42px; font-weight: 800; letter-spacing: 1px; }
+    .cover h2 { font-size: 20px; font-weight: 400; margin-top: 10px; opacity: 0.9; }
+    .cover .badge {
+      margin-top: 30px;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 50px;
+      padding: 8px 24px;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+    .cover .meta { margin-top: 50px; opacity: 0.75; font-size: 12px; line-height: 2; }
+
+    /* ── SECTION HEADERS ── */
+    .section-header {
+      background: linear-gradient(90deg, #1a73e8, #1558b0);
+      color: white;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 30px 0 0 0;
+      border-radius: 8px 8px 0 0;
+      page-break-before: auto;
+    }
+
+    /* ── WRAPPER ── */
+    .content { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+    /* ── TABLE OF CONTENTS ── */
+    .toc {
+      background: white;
+      border-radius: 10px;
+      padding: 24px 30px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      page-break-after: always;
+    }
+    .toc h2 { font-size: 18px; color: #1a73e8; margin-bottom: 16px; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
+    .toc-group { margin-bottom: 14px; }
+    .toc-group-title { font-weight: 700; color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .toc a { display: block; color: #1a73e8; text-decoration: none; padding: 3px 0 3px 12px; border-left: 3px solid #e8f0fe; margin-bottom: 2px; font-size: 12px; }
+    .toc a:hover { border-left-color: #1a73e8; }
+
+    /* ── API CARD ── */
+    .api-card {
+      background: white;
+      border-radius: 0 0 8px 8px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+
+    .api-item {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 20px 24px;
+    }
+    .api-item:last-child { border-bottom: none; }
+
+    /* ── METHOD + ENDPOINT ── */
+    .endpoint-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .method {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      min-width: 52px;
+      text-align: center;
+    }
+    .GET    { background: #e8f5e9; color: #2e7d32; }
+    .POST   { background: #e3f2fd; color: #1565c0; }
+    .PUT    { background: #fff3e0; color: #e65100; }
+    .DELETE { background: #fce4ec; color: #b71c1c; }
+
+    .endpoint {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .api-desc { color: #555; margin-bottom: 14px; font-size: 12px; line-height: 1.5; }
+
+    /* ── AUTH BADGE ── */
+    .auth-badge {
+      display: inline-block;
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      color: #f57f17;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .public-badge {
+      display: inline-block;
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      color: #2e7d32;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .admin-badge {
+      display: inline-block;
+      background: #fce4ec;
+      border: 1px solid #f48fb1;
+      color: #880e4f;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* ── PARAMS / BODY / RESPONSE TABLES ── */
+    .block-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #888;
+      margin: 14px 0 6px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    thead th {
+      background: #f5f7ff;
+      color: #555;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 7px 12px;
+      text-align: left;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    tbody td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: top;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fafbff; }
+
+    code {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #c0392b;
+    }
+
+    .required { color: #e53935; font-weight: 700; font-size: 10px; }
+    .optional { color: #888; font-size: 10px; }
+
+    /* ── JSON BLOCK ── */
+    .json-block {
+      background: #1e1e2e;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin: 6px 0;
+      overflow-x: auto;
+    }
+    .json-block pre {
+      color: #cdd6f4;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .json-key   { color: #89b4fa; }
+    .json-str   { color: #a6e3a1; }
+    .json-num   { color: #fab387; }
+    .json-bool  { color: #f38ba8; }
+    .json-null  { color: #9399b2; }
+
+    /* ── RATE LIMIT NOTICE ── */
+    .rate-notice {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 8px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
+      font-size: 11px;
+      color: #e65100;
+    }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      background: #e8f0fe;
+      border-left: 4px solid #1a73e8;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 8px 0;
+      font-size: 11px;
+      color: #1a237e;
+      line-height: 1.6;
+    }
+
+    /* ── BASE URL BOX ── */
+    .base-url-box {
+      background: white;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .base-url-box h3 { font-size: 14px; color: #333; margin-bottom: 12px; }
+    .url-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+    .env-tag {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      min-width: 80px;
+      text-align: center;
+    }
+    .url-val {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #1a73e8;
+    }
+
+    /* ── FOLDER STRUCTURE ── */
+    .folder-section {
+      background: white;
+      border-radius: 10px;
+      padding: 24px 30px;
+      margin: 24px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .folder-section h2 { font-size: 18px; color: #1a73e8; margin-bottom: 20px; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
+
+    .tree { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.9; }
+    .tree-root { font-weight: 800; color: #1a73e8; font-size: 14px; }
+
+    .file-row { display: flex; align-items: flex-start; gap: 0; }
+    .tree-indent { color: #ccc; white-space: pre; user-select: none; }
+
+    .file-name { font-weight: 700; color: #c0392b; white-space: nowrap; }
+    .file-name.folder { color: #1565c0; }
+    .file-name.config-file { color: #6a1b9a; }
+    .file-name.doc-file { color: #2e7d32; }
+    .file-name.env-file { color: #e65100; }
+
+    .file-desc { color: #555; font-family: 'Segoe UI', Arial, sans-serif; font-size: 11.5px; margin-left: 10px; padding-top: 1px; line-height: 1.5; }
+
+    .file-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 5px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      vertical-align: middle;
+    }
+    .tag-entry  { background: #e3f2fd; color: #1565c0; }
+    .tag-model  { background: #f3e5f5; color: #6a1b9a; }
+    .tag-util   { background: #e8f5e9; color: #2e7d32; }
+    .tag-mid    { background: #fff3e0; color: #e65100; }
+    .tag-route  { background: #fce4ec; color: #880e4f; }
+    .tag-config { background: #e8eaf6; color: #283593; }
+    .tag-doc    { background: #f1f8e9; color: #33691e; }
+
+    .schema-list { margin: 4px 0 0 0; padding-left: 16px; }
+    .schema-list li { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #666; line-height: 1.7; list-style: disc; }
+    .schema-list li strong { color: #444; }
+
+    .func-list { margin: 4px 0 0 0; }
+    .func-list span {
+      display: inline-block;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      color: #333;
+      margin: 2px 2px;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: white; font-size: 11px; }
+      .api-card { box-shadow: none; border: 1px solid #ddd; }
+      .section-header { page-break-before: always; }
+      .cover { page-break-after: always; height: 100vh; }
+      .toc { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════ -->
+<div class="cover">
+  <h1>JobSarthi</h1>
+  <h2>REST API Documentation</h2>
+  <div class="badge">aspirantcareer.in</div>
+  <div class="meta">
+    Author: Vishal Kumar<br/>
+    Version: 2.0<br/>
+    Last Updated: February 2026<br/>
+    Total APIs: 22
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ══════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════ -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Project Structure</div>
+    <a href="#folder-structure">Folder Structure — Every File Explained</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Base URL &amp; Auth</div>
+    <a href="#baseurl">Base URL</a>
+    <a href="#auth-flow">Authentication Flow</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Public Routes — Jobs</div>
+    <a href="#getJobs">GET /getJobs — All Jobs (Paginated)</a>
+    <a href="#homepageJobs">GET /hompageJobs — Homepage Jobs</a>
+    <a href="#getJobById">GET /getJobs/:id — Single Job</a>
+    <a href="#jobsCategory">GET /Jobs-category/:type — Jobs by Domain</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Public Routes — Admit Card &amp; Result</div>
+    <a href="#admitcards">GET /getadmitcards — All Admit Cards</a>
+    <a href="#results">GET /getresultcards — All Results</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Public Routes — Others</div>
+    <a href="#announcement">GET /announcement — Announcements</a>
+    <a href="#examcalendar">GET /exam-calendar — Exam Calendar</a>
+    <a href="#logout">GET /logout — Logout</a>
+    <a href="#health">GET /health — Health Check</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Auth Routes</div>
+    <a href="#signup">POST /userSignup — Register</a>
+    <a href="#verifyotp">POST /verify-otp — Verify Email OTP</a>
+    <a href="#resendotp">POST /resend-otp — Resend OTP</a>
+    <a href="#login">POST /login — Login</a>
+    <a href="#forgotpw">POST /forgot-password — Forgot Password</a>
+    <a href="#verifyresetotp">POST /verify-reset-otp — Verify Reset OTP</a>
+    <a href="#resetpw">POST /reset-password — Reset Password</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Protected Routes (JWT Required)</div>
+    <a href="#profile">GET /user/profile — User Profile</a>
+    <a href="#saveprefs">POST /user/save-preferences — Save Preferences</a>
+    <a href="#getuserdata">GET /getUserData — Get Saved Preferences</a>
+    <a href="#recomjobs">GET /user/preferencesJobs — Recommended Jobs</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Admin Routes</div>
+    <a href="#addexamcal">POST /admin/exam-calendar — Add Exam Calendar Entry</a>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     FOLDER STRUCTURE
+══════════════════════════════════════════ -->
+<div id="folder-structure" class="folder-section">
+  <h2>Folder Structure — Every File Explained</h2>
+
+  <div class="tree">
+
+    <!-- ROOT -->
+    <div class="file-row">
+      <span class="tree-root">jobsarthiapiv2/</span>
+    </div>
+
+    <!-- index.js -->
+    <div class="file-row" style="margin-top:10px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name">index.js</span>
+        <span class="file-tag tag-entry">Entry Point</span>
+        <div class="file-desc">
+          Main Express app file. Sets up all middleware and starts the HTTP server.<br/>
+          <strong>Contains:</strong> compression, cookieParser, CORS setup, route mounting (<code>/web/api</code>), health check endpoint (<code>/health</code>).<br/>
+          <strong>Note:</strong> Do not run this directly in production — use <code>cluster.js</code> instead.
+        </div>
+      </div>
+    </div>
+
+    <!-- cluster.js -->
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name">cluster.js</span>
+        <span class="file-tag tag-entry">Production Start</span>
+        <div class="file-desc">
+          Node.js cluster manager. Forks one worker process per CPU core so the server uses all available CPU power.<br/>
+          <strong>How it works:</strong> Master process forks N workers → each worker runs <code>index.js</code> → if any worker crashes, master auto-restarts it.<br/>
+          <strong>Start command:</strong> <code>npm start</code> → runs this file.
+        </div>
+      </div>
+    </div>
+
+    <!-- package.json -->
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name config-file">package.json</span>
+        <span class="file-tag tag-config">Config</span>
+        <div class="file-desc">
+          Project dependencies and npm scripts.<br/>
+          <strong>Scripts:</strong>
+          <div class="func-list">
+            <span>npm start → node cluster.js (production)</span>
+            <span>npm run start:single → node index.js (single process)</span>
+            <span>npm run dev → nodemon index.js (development)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- .env -->
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name env-file">.env</span>
+        <span class="file-tag tag-mid">Secret</span>
+        <div class="file-desc">
+          Environment variables. <strong>Never commit this file to Git.</strong><br/>
+          <strong>Required variables:</strong>
+          <div class="func-list">
+            <span>PORT</span>
+            <span>DBURL (MongoDB Atlas)</span>
+            <span>JWT_SECRET</span>
+            <span>JWT_EXPIRES_IN</span>
+            <span>EMAIL_USER</span>
+            <span>EMAIL_PASS (Gmail App Password)</span>
+            <span>FRONTEND_URL</span>
+            <span>REDIS_URL (optional)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API_DOCUMENTATION.html -->
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name doc-file">API_DOCUMENTATION.html</span>
+        <span class="file-tag tag-doc">Docs</span>
+        <div class="file-desc">
+          This file. Complete API documentation. Open in Chrome/Edge → Ctrl+P → Save as PDF.
+        </div>
+      </div>
+    </div>
+
+    <!-- ARCHITECTURE.md -->
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">├── </span>
+      <div>
+        <span class="file-name doc-file">ARCHITECTURE.md</span>
+        <span class="file-tag tag-doc">Docs</span>
+        <div class="file-desc">
+          Technical architecture overview, database models, environment setup guide. For developers onboarding to the project.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── config/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">├── </span>
+      <span class="file-name folder">config/</span>
+    </div>
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">│   └── </span>
+      <div>
+        <span class="file-name">db.js</span>
+        <span class="file-tag tag-config">Database</span>
+        <div class="file-desc">
+          Connects to MongoDB Atlas using Mongoose.<br/>
+          <strong>Pool settings:</strong> maxPoolSize: 10 (10 concurrent DB connections per worker), serverSelectionTimeoutMS: 5000, socketTimeoutMS: 45000.<br/>
+          If connection fails → <code>process.exit(1)</code> so the server doesn't start with a broken DB.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── controller/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">├── </span>
+      <span class="file-name folder">controller/</span>
+    </div>
+
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">│   ├── </span>
+      <div>
+        <span class="file-name">authController.js</span>
+        <span class="file-tag tag-entry">Auth</span>
+        <div class="file-desc">
+          Handles user registration and login.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>userSignupController</span>
+            <span>userLoginController</span>
+          </div>
+          <strong>Signup flow:</strong> validates input → hashes password (bcrypt, 12 rounds) → generates 6-digit OTP → saves user → sends OTP email.<br/>
+          <strong>Login flow:</strong> finds user → checks isVerified → compares password → generates JWT (7d) → sets httpOnly cookie.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">│   ├── </span>
+      <div>
+        <span class="file-name">forgotPasswordController.js</span>
+        <span class="file-tag tag-entry">Auth</span>
+        <div class="file-desc">
+          3-step password reset flow using OTP.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>forgotPasswordController → Step 1: send OTP email</span>
+            <span>verifyResetOtpController → Step 2: verify OTP, return resetToken (15min)</span>
+            <span>resetPasswordController → Step 3: set new password using resetToken</span>
+          </div>
+          Always returns same message on Step 1 to prevent email enumeration attacks.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">│   ├── </span>
+      <div>
+        <span class="file-name">userController.js</span>
+        <span class="file-tag tag-entry">User</span>
+        <div class="file-desc">
+          Handles user profile and personalized job features.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>profileController → return logged-in user details</span>
+            <span>Savepreferences → save/update job preferences (upsert)</span>
+            <span>GetSaveData → return saved preferences</span>
+            <span>recommendJobsController → return top 30 matched jobs (scoring engine)</span>
+          </div>
+          <strong>Scoring engine</strong> in recommendJobsController uses MongoDB Aggregation Pipeline with weighted scoring: education (30pts) + stream (10pts) + location (20pts) + orgType (up to 25pts) + interests (up to 25pts). Minimum score 20 to appear in results.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">│   ├── </span>
+      <div>
+        <span class="file-name">verifyEmailController.js</span>
+        <span class="file-tag tag-entry">Auth</span>
+        <div class="file-desc">
+          OTP verification after signup.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>verifyOtpController → verify OTP, set auth cookie, mark isVerified=true</span>
+            <span>resendOtpController → generate new OTP, send to email</span>
+          </div>
+          OTP expires in 10 minutes. After verification, JWT cookie is set automatically so user is logged in instantly.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">│   └── </span>
+      <div>
+        <span class="file-name">webController.js</span>
+        <span class="file-tag tag-entry">Main</span>
+        <div class="file-desc">
+          Core public API handlers. All job portal data goes through here.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>getJobs → paginated + search + Redis cache</span>
+            <span>getHomePageJobs → limited fields for homepage</span>
+            <span>getJobById → single job full detail</span>
+            <span>getAdmitCard → paginated + category filter + search + cache</span>
+            <span>getResultCard → paginated + category filter + search + cache</span>
+            <span>_getAnnouncement → latest 4+4+4 items</span>
+            <span>JobCategoryController → jobs by domain type</span>
+            <span>getExamCalendar → upcoming exam events (filter by month/year/category)</span>
+            <span>addExamCalendar → add new exam calendar entry (admin)</span>
+            <span>logutController → clear JWT cookie</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── middleware/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">├── </span>
+      <span class="file-name folder">middleware/</span>
+    </div>
+
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">│   ├── </span>
+      <div>
+        <span class="file-name">auth.js</span>
+        <span class="file-tag tag-mid">Middleware</span>
+        <div class="file-desc">
+          JWT authentication middleware. Reads <code>token</code> cookie → verifies with JWT_SECRET → finds user in DB → attaches to <code>req.user</code>.<br/>
+          Applied to all protected routes. Returns <code>401</code> if cookie missing or token invalid/expired.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">│   └── </span>
+      <div>
+        <span class="file-name">rateLimiter.js</span>
+        <span class="file-tag tag-mid">Middleware</span>
+        <div class="file-desc">
+          Protects auth routes from brute force attacks using express-rate-limit.<br/>
+          <strong>Limiters:</strong>
+          <div class="func-list">
+            <span>signupLimiter → 40 requests / 1 hour per IP</span>
+            <span>loginLimiter → 40 requests / 15 min per IP</span>
+            <span>forgotPasswordLimiter → 5 requests / 15 min per IP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── models/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">├── </span>
+      <span class="file-name folder">models/</span>
+    </div>
+
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">│   └── </span>
+      <div>
+        <span class="file-name">webmodel.js</span>
+        <span class="file-tag tag-model">All Schemas</span>
+        <div class="file-desc">
+          Single file containing all 7 Mongoose schemas and models for the entire project.<br/>
+          <ul class="schema-list">
+            <li><strong>jobs</strong> — Full job info: title, department, vacancies, eligibility, ageCriteria, physicalCriteria, selectionProcess, applicationFee, importantDates, links, tags, searchKeywords</li>
+            <li><strong>AdmitCard</strong> — title, description, releaseDate, examDate, category</li>
+            <li><strong>result</strong> — title, description, ReleaseDate, DownloadLink</li>
+            <li><strong>accounts</strong> — firstName, lastName, email, password (hashed), isVerified, otp, otpExpiry, resetOtp, resetOtpExpiry</li>
+            <li><strong>userpreferences</strong> — userId (ref: accounts), education, preferredLocations, category, gender, organizationTypes, interests</li>
+            <li><strong>announcement</strong> — title, status, link, orderNo, isActive</li>
+            <li><strong>examcalendar</strong> — title, category, phase, date, description, officialLink, isActive. Index on {date, category}.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── routes/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">├── </span>
+      <span class="file-name folder">routes/</span>
+    </div>
+
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">│   └── </span>
+      <div>
+        <span class="file-name">webroutes.js</span>
+        <span class="file-tag tag-route">Routes</span>
+        <div class="file-desc">
+          Single routes file for the entire API. Mounts all controllers onto URL paths.<br/>
+          <strong>Sections:</strong>
+          <div class="func-list">
+            <span>Public Routes (10 routes) — no auth needed</span>
+            <span>Auth Routes (7 routes) — signup, login, OTP, password reset</span>
+            <span>Protected Routes (4 routes) — require JWT cookie</span>
+            <span>Admin Routes (1 route) — add exam calendar entry</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── utils/ ── -->
+    <div class="file-row" style="margin-top:14px;">
+      <span class="tree-indent">└── </span>
+      <span class="file-name folder">utils/</span>
+    </div>
+
+    <div class="file-row" style="margin-top:4px;">
+      <span class="tree-indent">&nbsp;&nbsp;&nbsp;&nbsp;├── </span>
+      <div>
+        <span class="file-name">cache.js</span>
+        <span class="file-tag tag-util">Utility</span>
+        <div class="file-desc">
+          Redis caching helper using ioredis.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>getCache(key) → returns parsed data or null</span>
+            <span>setCache(key, data, ttlSeconds) → stores JSON with expiry</span>
+            <span>clearCache(key) → deletes a cache key</span>
+          </div>
+          <strong>Graceful fallback:</strong> If REDIS_URL is not set in .env, all cache functions silently do nothing and the app works normally without caching.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">&nbsp;&nbsp;&nbsp;&nbsp;├── </span>
+      <div>
+        <span class="file-name">emailService.js</span>
+        <span class="file-tag tag-util">Utility</span>
+        <div class="file-desc">
+          Nodemailer email sender using Gmail SMTP.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>sendOtpEmail(user, otp) → signup verification email</span>
+            <span>sendPasswordResetOtpEmail(user, otp) → password reset OTP email</span>
+          </div>
+          Credentials come from <code>EMAIL_USER</code> and <code>EMAIL_PASS</code> in .env. Use Gmail App Password, not your real password.
+        </div>
+      </div>
+    </div>
+
+    <div class="file-row" style="margin-top:8px;">
+      <span class="tree-indent">&nbsp;&nbsp;&nbsp;&nbsp;└── </span>
+      <div>
+        <span class="file-name">validation.js</span>
+        <span class="file-tag tag-util">Utility</span>
+        <div class="file-desc">
+          Input validation for the signup form.<br/>
+          <strong>Functions:</strong>
+          <div class="func-list">
+            <span>validateSignupInput(firstName, lastName, email, password)</span>
+          </div>
+          <strong>Rules:</strong> firstName/lastName 2–50 chars (letters only), valid email format, password min 8 chars with uppercase + lowercase + digits + no spaces.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .tree -->
+</div>
+
+<!-- ══════════════════════════════════════════
+     BASE URL
+══════════════════════════════════════════ -->
+<div id="baseurl" class="base-url-box">
+  <h3>Base URL</h3>
+  <div class="url-row">
+    <span class="env-tag">Local</span>
+    <span class="url-val">http://localhost:8080/web/api</span>
+  </div>
+  <div class="url-row">
+    <span class="env-tag">Production</span>
+    <span class="url-val">https://api.aspirantcareer.in/web/api</span>
+  </div>
+  <div class="info-box" style="margin-top:12px;">
+    All API routes start with <code>/web/api</code>. The health check endpoint is at <code>/health</code> (no prefix).
+    Protected routes require a valid JWT stored in a <code>httpOnly</code> cookie named <code>token</code>.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     AUTH FLOW
+══════════════════════════════════════════ -->
+<div id="auth-flow" class="base-url-box">
+  <h3>Authentication Flow</h3>
+  <div class="info-box">
+    <strong>Signup:</strong> POST /userSignup → OTP sent to email → POST /verify-otp → JWT cookie set automatically<br/><br/>
+    <strong>Login:</strong> POST /login → JWT stored in httpOnly cookie (valid 7 days)<br/><br/>
+    <strong>Forgot Password:</strong> POST /forgot-password → POST /verify-reset-otp → receive resetToken → POST /reset-password<br/><br/>
+    <strong>Protected APIs:</strong> The JWT cookie is sent automatically by the browser with every request. No manual header needed.
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     PUBLIC — JOBS
+══════════════════════════════════════════ -->
+<div class="section-header">Public Routes — Jobs</div>
+<div class="api-card">
+
+  <!-- 1. GET /getJobs -->
+  <div id="getJobs" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/getJobs</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns all active government jobs with pagination and optional keyword search.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>limit</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>20</td><td>Items per page</td></tr>
+        <tr><td><code>search</code></td><td>String</td><td><span class="optional">Optional</span></td><td>—</td><td>Search by job title (case-insensitive)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Example Request</div>
+    <div class="info-box"><code>GET /getJobs?page=1&amp;limit=10&amp;search=SSC</code></div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"All jobs fetched"</span>,
+  <span class="json-key">"total"</span>: <span class="json-num">150</span>,
+  <span class="json-key">"page"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"totalPages"</span>: <span class="json-num">8</span>,
+  <span class="json-key">"data"</span>: [ <span class="json-str">/* array of job objects */</span> ]
+}</pre></div>
+  </div>
+
+  <!-- 2. GET /hompageJobs -->
+  <div id="homepageJobs" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/hompageJobs</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns all jobs with limited fields only — optimized for homepage listing. Returns: <code>_id</code>, <code>title</code>, <code>JobId</code>, <code>vacancies.total</code>, <code>importantDates.applyStart</code>, <code>importantDates.applyEnd</code>, <code>conductingBody</code>.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <div class="info-box">No parameters required.</div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Successfully fetched the data"</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"64abc..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"SSC"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-key">"total"</span>: <span class="json-num">17727</span> },
+      <span class="json-key">"importantDates"</span>: { <span class="json-key">"applyStart"</span>: <span class="json-str">"2025-01-10"</span>, <span class="json-key">"applyEnd"</span>: <span class="json-str">"2025-02-05"</span> }
+    }
+  ]
+}</pre></div>
+  </div>
+
+  <!-- 3. GET /getJobs/:id -->
+  <div id="getJobById" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/getJobs/:id</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns complete details of a single job by its MongoDB <code>_id</code>.</div>
+
+    <div class="block-title">URL Parameter</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>String</td><td><span class="required">Required</span></td><td>MongoDB Object ID of the job</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Example Request</div>
+    <div class="info-box"><code>GET /getJobs/64abc123def456</code></div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Single job fetched"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"_id"</span>: <span class="json-str">"64abc..."</span>,
+    <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025"</span>,
+    <span class="json-key">"department"</span>: <span class="json-str">"SSC"</span>,
+    <span class="json-key">"vacancies"</span>: { <span class="json-str">/* full vacancy details */</span> },
+    <span class="json-key">"eligibility"</span>: { <span class="json-str">/* education, age, rules */</span> },
+    <span class="json-key">"importantDates"</span>: { <span class="json-str">/* all dates */</span> },
+    <span class="json-key">"links"</span>: { <span class="json-str">/* official links */</span> }
+  }
+}</pre></div>
+  </div>
+
+  <!-- 4. GET /Jobs-category/:type -->
+  <div id="jobsCategory" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/Jobs-category/:type</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns active jobs filtered by domain/category type.</div>
+
+    <div class="block-title">URL Parameter — Allowed Values for <code>:type</code></div>
+    <div class="info-box">
+      <code>Central</code> &nbsp;|&nbsp; <code>State</code> &nbsp;|&nbsp; <code>Defence</code> &nbsp;|&nbsp;
+      <code>Police</code> &nbsp;|&nbsp; <code>Railway</code> &nbsp;|&nbsp; <code>Banking</code> &nbsp;|&nbsp;
+      <code>Teaching</code> &nbsp;|&nbsp; <code>PSU</code> &nbsp;|&nbsp; <code>Medical</code> &nbsp;|&nbsp;
+      <code>Engineering</code> &nbsp;|&nbsp; <code>Other</code>
+    </div>
+
+    <div class="block-title">Example Request</div>
+    <div class="info-box"><code>GET /Jobs-category/Railway</code></div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"jobType"</span>: <span class="json-str">"railway"</span>,
+  <span class="json-key">"total"</span>: <span class="json-num">12</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"title"</span>: <span class="json-str">"RRB NTPC 2025"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"RRB"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-str">/* ... */</span> },
+      <span class="json-key">"importantDates"</span>: { <span class="json-str">/* ... */</span> }
+    }
+  ]
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     PUBLIC — ADMIT CARD & RESULT
+══════════════════════════════════════════ -->
+<div class="section-header">Public Routes — Admit Card &amp; Result</div>
+<div class="api-card">
+
+  <!-- 5. GET /getadmitcards -->
+  <div id="admitcards" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/getadmitcards</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns admit cards with pagination. Sorted by release date (latest first). Supports filter by category and keyword search.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>limit</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>20</td><td>Items per page</td></tr>
+        <tr><td><code>category</code></td><td>String</td><td><span class="optional">Optional</span></td><td>—</td><td>Filter by category (e.g. SSC, Railway)</td></tr>
+        <tr><td><code>search</code></td><td>String</td><td><span class="optional">Optional</span></td><td>—</td><td>Search by title</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Example Request</div>
+    <div class="info-box"><code>GET /getadmitcards?page=1&amp;limit=10&amp;category=SSC</code></div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"All Admit Card Data"</span>,
+  <span class="json-key">"total"</span>: <span class="json-num">45</span>,
+  <span class="json-key">"page"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"totalPages"</span>: <span class="json-num">5</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"SSC GD Constable Admit Card 2025"</span>,
+      <span class="json-key">"releaseDate"</span>: <span class="json-str">"2025-03-10T00:00:00.000Z"</span>,
+      <span class="json-key">"examDate"</span>: <span class="json-str">"2025-04-01T00:00:00.000Z"</span>,
+      <span class="json-key">"category"</span>: <span class="json-str">"SSC"</span>
+    }
+  ]
+}</pre></div>
+  </div>
+
+  <!-- 6. GET /getresultcards -->
+  <div id="results" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/getresultcards</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns exam results with pagination. Sorted by release date (latest first). Supports filter by category and keyword search.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>page</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>1</td><td>Page number</td></tr>
+        <tr><td><code>limit</code></td><td>Number</td><td><span class="optional">Optional</span></td><td>20</td><td>Items per page</td></tr>
+        <tr><td><code>category</code></td><td>String</td><td><span class="optional">Optional</span></td><td>—</td><td>Filter by category</td></tr>
+        <tr><td><code>search</code></td><td>String</td><td><span class="optional">Optional</span></td><td>—</td><td>Search by title</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"All Result Data"</span>,
+  <span class="json-key">"total"</span>: <span class="json-num">30</span>,
+  <span class="json-key">"page"</span>: <span class="json-num">1</span>,
+  <span class="json-key">"totalPages"</span>: <span class="json-num">2</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"RRB NTPC Result 2025"</span>,
+      <span class="json-key">"ReleaseDate"</span>: <span class="json-str">"2025-06-15T00:00:00.000Z"</span>,
+      <span class="json-key">"DownloadLink"</span>: <span class="json-str">"https://rrbcdg.gov.in/result.pdf"</span>
+    }
+  ]
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     PUBLIC — OTHERS
+══════════════════════════════════════════ -->
+<div class="section-header">Public Routes — Others</div>
+<div class="api-card">
+
+  <!-- 7. GET /announcement -->
+  <div id="announcement" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/announcement</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns latest 4 jobs + latest 4 admit cards + latest 4 results combined. Used for the homepage announcement ticker.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <div class="info-box">No parameters required.</div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Announcement Data fetched successfully"</span>,
+  <span class="json-key">"data"</span>: [
+    { <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>, <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025"</span> },
+    { <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>, <span class="json-key">"title"</span>: <span class="json-str">"UPSC Admit Card 2025"</span> },
+    <span class="json-str">/* total 12 items max (4+4+4) */</span>
+  ]
+}</pre></div>
+  </div>
+
+  <!-- 8. GET /exam-calendar -->
+  <div id="examcalendar" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/exam-calendar</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Returns upcoming exam events sorted by date. Can filter by month+year or by category. Default returns all events for next 6 months.</div>
+
+    <div class="block-title">Query Parameters</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>month</code></td><td>Number (1–12)</td><td><span class="optional">Optional</span></td><td>Filter by month. Must be used with <code>year</code>.</td></tr>
+        <tr><td><code>year</code></td><td>Number (YYYY)</td><td><span class="optional">Optional</span></td><td>Filter by year. Must be used with <code>month</code>.</td></tr>
+        <tr><td><code>category</code></td><td>String</td><td><span class="optional">Optional</span></td><td>SSC | Railway | Banking | UPSC | State | Defence | Police | Teaching | PSU | Medical</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Logic</div>
+    <div class="info-box">
+      • <strong>month + year both given</strong> → events for that specific month only<br/>
+      • <strong>Only category given</strong> → upcoming events for next 6 months in that category<br/>
+      • <strong>No params</strong> → all upcoming events for next 6 months
+    </div>
+
+    <div class="block-title">Example Requests</div>
+    <div class="info-box">
+      <code>GET /exam-calendar</code> — all upcoming (next 6 months)<br/>
+      <code>GET /exam-calendar?month=3&amp;year=2026</code> — March 2026 events<br/>
+      <code>GET /exam-calendar?category=SSC</code> — upcoming SSC events<br/>
+      <code>GET /exam-calendar?category=Railway&amp;month=4&amp;year=2026</code> — Railway events in April 2026
+    </div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025 - Last Date to Apply"</span>,
+      <span class="json-key">"category"</span>: <span class="json-str">"SSC"</span>,
+      <span class="json-key">"phase"</span>: <span class="json-str">"lastDate"</span>,
+      <span class="json-key">"date"</span>: <span class="json-str">"2026-03-25T00:00:00.000Z"</span>,
+      <span class="json-key">"description"</span>: <span class="json-str">"Last date to submit online form"</span>,
+      <span class="json-key">"officialLink"</span>: <span class="json-str">"https://ssc.nic.in"</span>,
+      <span class="json-key">"isActive"</span>: <span class="json-bool">true</span>
+    }
+  ]
+}</pre></div>
+  </div>
+
+  <!-- 9. GET /logout -->
+  <div id="logout" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/logout</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Clears the JWT auth cookie from the browser. User is logged out.</div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{ <span class="json-key">"message"</span>: <span class="json-str">"Logged out successfully"</span> }</pre></div>
+  </div>
+
+  <!-- 10. GET /health -->
+  <div id="health" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/health &nbsp;<small style="font-family:sans-serif;color:#888;">(no /web/api prefix)</small></span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Server health check. Used by load balancers and monitoring tools to verify the server is alive.</div>
+
+    <div class="block-title">Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"ok"</span>,
+  <span class="json-key">"uptime"</span>: <span class="json-num">3600.25</span>,
+  <span class="json-key">"timestamp"</span>: <span class="json-str">"2026-02-28T10:00:00.000Z"</span>,
+  <span class="json-key">"pid"</span>: <span class="json-num">1234</span>
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     AUTH ROUTES
+══════════════════════════════════════════ -->
+<div class="section-header">Auth Routes</div>
+<div class="api-card">
+
+  <!-- 11. POST /userSignup -->
+  <div id="signup" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/userSignup</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Register a new user. On success, a 6-digit OTP is sent to the given email. The account is not active until OTP is verified.</div>
+    <div class="rate-notice">Rate Limited: Max 40 requests per IP per hour</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>firstName</code></td><td>String</td><td><span class="required">Required</span></td><td>User's first name</td></tr>
+        <tr><td><code>lastName</code></td><td>String</td><td><span class="optional">Optional</span></td><td>User's last name</td></tr>
+        <tr><td><code>email</code></td><td>String</td><td><span class="required">Required</span></td><td>Valid email address (must be unique)</td></tr>
+        <tr><td><code>password</code></td><td>String</td><td><span class="required">Required</span></td><td>Min 8 characters</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"firstName"</span>: <span class="json-str">"Vishal"</span>,
+  <span class="json-key">"lastName"</span>: <span class="json-str">"Kumar"</span>,
+  <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+  <span class="json-key">"password"</span>: <span class="json-str">"MyPass@123"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (201)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Account created! Please check your email for the 6-digit OTP."</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"userId"</span>: <span class="json-str">"64abc..."</span>,
+    <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+    <span class="json-key">"requiresOtpVerification"</span>: <span class="json-bool">true</span>
+  }
+}</pre></div>
+  </div>
+
+  <!-- 12. POST /verify-otp -->
+  <div id="verifyotp" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/verify-otp</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Verifies the 6-digit OTP sent to the user's email after signup. On success, sets auth cookie and marks user as verified.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>email</code></td><td>String</td><td><span class="required">Required</span></td><td>User's email</td></tr>
+        <tr><td><code>otp</code></td><td>String</td><td><span class="required">Required</span></td><td>6-digit OTP received in email (valid 10 min)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+  <span class="json-key">"otp"</span>: <span class="json-str">"847291"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Email verified successfully!"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"user"</span>: { <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>, <span class="json-key">"firstName"</span>: <span class="json-str">"Vishal"</span>, <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span> },
+    <span class="json-key">"token"</span>: <span class="json-str">"eyJhbGciOi..."</span>
+  }
+}</pre></div>
+  </div>
+
+  <!-- 13. POST /resend-otp -->
+  <div id="resendotp" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/resend-otp</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Resends a fresh 6-digit OTP to the user's email. Use when the previous OTP expired.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <div class="json-block"><pre>{ <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span> }</pre></div>
+
+    <div class="block-title">Success Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"A new OTP has been sent to your email."</span>
+}</pre></div>
+  </div>
+
+  <!-- 14. POST /login -->
+  <div id="login" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/login</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Authenticates the user. Sets a JWT in a secure <code>httpOnly</code> cookie valid for 7 days. Email must be verified before login.</div>
+    <div class="rate-notice">Rate Limited: Max 40 requests per IP per 15 minutes</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>email</code></td><td>String</td><td><span class="required">Required</span></td><td>Registered email</td></tr>
+        <tr><td><code>password</code></td><td>String</td><td><span class="required">Required</span></td><td>Account password</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+  <span class="json-key">"password"</span>: <span class="json-str">"MyPass@123"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (200) + Sets Cookie</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Login successful"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"user"</span>: {
+      <span class="json-key">"id"</span>: <span class="json-str">"64abc..."</span>,
+      <span class="json-key">"firstName"</span>: <span class="json-str">"Vishal"</span>,
+      <span class="json-key">"lastName"</span>: <span class="json-str">"Kumar"</span>,
+      <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+      <span class="json-key">"token"</span>: <span class="json-str">"eyJhbGciOi..."</span>
+    }
+  }
+}</pre></div>
+  </div>
+
+  <!-- 15. POST /forgot-password -->
+  <div id="forgotpw" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/forgot-password</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Step 1 of password reset. Sends a 6-digit OTP to the user's registered email. Always returns same message to prevent email enumeration.</div>
+    <div class="rate-notice">Rate Limited: Max 5 requests per IP per 15 minutes</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <div class="json-block"><pre>{ <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span> }</pre></div>
+
+    <div class="block-title">Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"If this email is registered, you will receive an OTP shortly."</span>
+}</pre></div>
+  </div>
+
+  <!-- 16. POST /verify-reset-otp -->
+  <div id="verifyresetotp" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/verify-reset-otp</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Step 2 of password reset. Verifies the OTP. Returns a short-lived <code>resetToken</code> (valid 15 minutes) to use in the next step.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+  <span class="json-key">"otp"</span>: <span class="json-str">"847291"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"OTP verified. You may now reset your password."</span>,
+  <span class="json-key">"data"</span>: { <span class="json-key">"resetToken"</span>: <span class="json-str">"eyJhbGciOi..."</span> }
+}</pre></div>
+  </div>
+
+  <!-- 17. POST /reset-password -->
+  <div id="resetpw" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/reset-password</span>
+      <span class="public-badge">Public</span>
+    </div>
+    <div class="api-desc">Step 3 of password reset. Sets a new password using the <code>resetToken</code> received from <code>/verify-reset-otp</code>.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>resetToken</code></td><td>String</td><td><span class="required">Required</span></td><td>Token from /verify-reset-otp (valid 15 min)</td></tr>
+        <tr><td><code>newPassword</code></td><td>String</td><td><span class="required">Required</span></td><td>New password (min 8 characters)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"resetToken"</span>: <span class="json-str">"eyJhbGciOi..."</span>,
+  <span class="json-key">"newPassword"</span>: <span class="json-str">"NewPass@456"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Password reset successfully! You can now log in."</span>
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     PROTECTED ROUTES
+══════════════════════════════════════════ -->
+<div class="section-header">Protected Routes — JWT Cookie Required</div>
+<div class="api-card">
+
+  <div class="info-box" style="margin:16px 24px 0;">
+    All routes below require the user to be logged in. The JWT cookie is sent automatically by the browser.
+    If not logged in, the API returns <code>401 Authentication required</code>.
+  </div>
+
+  <!-- 18. GET /user/profile -->
+  <div id="profile" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/user/profile</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Returns the logged-in user's profile details.</div>
+
+    <div class="block-title">Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"user"</span>: {
+    <span class="json-key">"id"</span>: <span class="json-str">"64abc..."</span>,
+    <span class="json-key">"firstName"</span>: <span class="json-str">"Vishal"</span>,
+    <span class="json-key">"lastName"</span>: <span class="json-str">"Kumar"</span>,
+    <span class="json-key">"email"</span>: <span class="json-str">"vishal@example.com"</span>,
+    <span class="json-key">"isVerified"</span>: <span class="json-bool">true</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-str">"2025-01-15T10:00:00.000Z"</span>,
+    <span class="json-key">"lastLogin"</span>: <span class="json-str">"2026-02-28T08:00:00.000Z"</span>
+  }
+}</pre></div>
+  </div>
+
+  <!-- 19. POST /user/save-preferences -->
+  <div id="saveprefs" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/user/save-preferences</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Saves or updates the user's job preferences. Used to power personalized job recommendations. At least one of education, organizationTypes, or interests must be provided.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Example Values</th></tr></thead>
+      <tbody>
+        <tr><td><code>educationLevels</code></td><td>Array</td><td><span class="optional">Optional*</span></td><td><code>["graduate", "12th", "diploma"]</code></td></tr>
+        <tr><td><code>educationStreams</code></td><td>Array</td><td><span class="optional">Optional</span></td><td><code>["science", "arts", "commerce"]</code></td></tr>
+        <tr><td><code>specializations</code></td><td>Array</td><td><span class="optional">Optional</span></td><td><code>["civil", "computer science"]</code></td></tr>
+        <tr><td><code>preferredLocations</code></td><td>Array</td><td><span class="optional">Optional</span></td><td><code>["Uttar Pradesh", "All India"]</code></td></tr>
+        <tr><td><code>category</code></td><td>String</td><td><span class="optional">Optional</span></td><td><code>"gen"</code> | <code>"obc"</code> | <code>"sc"</code> | <code>"st"</code> | <code>"ews"</code></td></tr>
+        <tr><td><code>gender</code></td><td>String</td><td><span class="optional">Optional</span></td><td><code>"male"</code> | <code>"female"</code> | <code>"any"</code></td></tr>
+        <tr><td><code>organizationTypes</code></td><td>Array</td><td><span class="optional">Optional*</span></td><td><code>["police", "railway", "banking"]</code></td></tr>
+        <tr><td><code>interests</code></td><td>Array</td><td><span class="optional">Optional*</span></td><td><code>["constable", "clerk", "technical"]</code></td></tr>
+      </tbody>
+    </table>
+    <div class="info-box">* At least one of <code>educationLevels</code>, <code>organizationTypes</code>, or <code>interests</code> must have values.</div>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"educationLevels"</span>: [<span class="json-str">"graduate"</span>],
+  <span class="json-key">"educationStreams"</span>: [<span class="json-str">"science"</span>],
+  <span class="json-key">"preferredLocations"</span>: [<span class="json-str">"Uttar Pradesh"</span>, <span class="json-str">"All India"</span>],
+  <span class="json-key">"category"</span>: <span class="json-str">"gen"</span>,
+  <span class="json-key">"gender"</span>: <span class="json-str">"male"</span>,
+  <span class="json-key">"organizationTypes"</span>: [<span class="json-str">"police"</span>, <span class="json-str">"railway"</span>],
+  <span class="json-key">"interests"</span>: [<span class="json-str">"constable"</span>, <span class="json-str">"clerk"</span>]
+}</pre></div>
+
+    <div class="block-title">Success Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"User preferences saved successfully"</span>,
+  <span class="json-key">"data"</span>: { <span class="json-str">/* saved preference object */</span> }
+}</pre></div>
+  </div>
+
+  <!-- 20. GET /getUserData -->
+  <div id="getuserdata" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/getUserData</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Returns the logged-in user's saved preferences from the database.</div>
+
+    <div class="block-title">Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"User data fetched successfully"</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"userId"</span>: <span class="json-str">"64abc..."</span>,
+      <span class="json-key">"education"</span>: { <span class="json-key">"levels"</span>: [<span class="json-str">"graduate"</span>], <span class="json-key">"stream"</span>: [<span class="json-str">"science"</span>] },
+      <span class="json-key">"preferredLocations"</span>: [<span class="json-str">"Uttar Pradesh"</span>],
+      <span class="json-key">"organizationTypes"</span>: [<span class="json-str">"police"</span>],
+      <span class="json-key">"interests"</span>: [<span class="json-str">"constable"</span>]
+    }
+  ]
+}</pre></div>
+  </div>
+
+  <!-- 21. GET /user/preferencesJobs -->
+  <div id="recomjobs" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/user/preferencesJobs</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Returns up to 30 personalized job recommendations based on the user's saved preferences. Jobs are scored and ranked using education, location, organization type, and interests. Only active jobs with open/no application deadline are returned.</div>
+
+    <div class="block-title">Scoring System</div>
+    <table>
+      <thead><tr><th>Signal</th><th>Points</th></tr></thead>
+      <tbody>
+        <tr><td>Education level match (cascading — graduate also sees 12th jobs)</td><td>30 pts</td></tr>
+        <tr><td>Education stream match</td><td>10 pts</td></tr>
+        <tr><td>Location match</td><td>20 pts</td></tr>
+        <tr><td>Organization type match (8 pts each, max 25)</td><td>up to 25 pts</td></tr>
+        <tr><td>Interest match (5 pts each, max 25)</td><td>up to 25 pts</td></tr>
+      </tbody>
+    </table>
+    <div class="info-box">Minimum score of 20 required to appear in results. Jobs sorted by score (highest first), then by earliest application deadline.</div>
+
+    <div class="block-title">Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
+  <span class="json-key">"count"</span>: <span class="json-num">12</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"UP Police Constable 2025"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"UPPRPB"</span>,
+      <span class="json-key">"location"</span>: <span class="json-str">"Uttar Pradesh"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-key">"total"</span>: <span class="json-num">60244</span> },
+      <span class="json-key">"importantDates"</span>: { <span class="json-key">"applyEnd"</span>: <span class="json-str">"2026-03-31"</span> },
+      <span class="json-key">"matchScore"</span>: <span class="json-num">85</span>
+    }
+  ]
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     ADMIN ROUTES
+══════════════════════════════════════════ -->
+<div class="section-header">Admin Routes</div>
+<div class="api-card">
+
+  <!-- 22. POST /admin/exam-calendar -->
+  <div id="addexamcal" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/admin/exam-calendar</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div class="api-desc">Adds a new entry to the exam calendar. Used by admin to manually add important exam events/dates.</div>
+
+    <div class="block-title">Request Body (JSON)</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Allowed Values</th></tr></thead>
+      <tbody>
+        <tr><td><code>title</code></td><td>String</td><td><span class="required">Required</span></td><td>Any descriptive title</td></tr>
+        <tr><td><code>category</code></td><td>String</td><td><span class="required">Required</span></td><td>SSC | Railway | Banking | UPSC | State | Defence | Police | Teaching | PSU | Medical</td></tr>
+        <tr><td><code>phase</code></td><td>String</td><td><span class="required">Required</span></td><td>application | lastDate | admitCard | exam | result</td></tr>
+        <tr><td><code>date</code></td><td>Date</td><td><span class="required">Required</span></td><td>ISO 8601 date string</td></tr>
+        <tr><td><code>description</code></td><td>String</td><td><span class="optional">Optional</span></td><td>Short note about this event</td></tr>
+        <tr><td><code>officialLink</code></td><td>String</td><td><span class="optional">Optional</span></td><td>Official website URL</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Phase Values Explained</div>
+    <table>
+      <thead><tr><th>Phase</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>application</code></td><td>Application form opens on this date</td></tr>
+        <tr><td><code>lastDate</code></td><td>Last date to submit application</td></tr>
+        <tr><td><code>admitCard</code></td><td>Admit card will be released on this date</td></tr>
+        <tr><td><code>exam</code></td><td>Exam will be held on this date</td></tr>
+        <tr><td><code>result</code></td><td>Result will be declared on this date</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Request Body Example</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025 - Last Date to Apply"</span>,
+  <span class="json-key">"category"</span>: <span class="json-str">"SSC"</span>,
+  <span class="json-key">"phase"</span>: <span class="json-str">"lastDate"</span>,
+  <span class="json-key">"date"</span>: <span class="json-str">"2026-03-25T00:00:00.000Z"</span>,
+  <span class="json-key">"description"</span>: <span class="json-str">"Last date to submit online application form"</span>,
+  <span class="json-key">"officialLink"</span>: <span class="json-str">"https://ssc.nic.in"</span>
+}</pre></div>
+
+    <div class="block-title">Success Response (201)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Exam calendar entry added successfully"</span>,
+  <span class="json-key">"data"</span>: {
+    <span class="json-key">"_id"</span>: <span class="json-str">"64abc..."</span>,
+    <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025 - Last Date to Apply"</span>,
+    <span class="json-key">"category"</span>: <span class="json-str">"SSC"</span>,
+    <span class="json-key">"phase"</span>: <span class="json-str">"lastDate"</span>,
+    <span class="json-key">"date"</span>: <span class="json-str">"2026-03-25T00:00:00.000Z"</span>,
+    <span class="json-key">"isActive"</span>: <span class="json-bool">true</span>,
+    <span class="json-key">"createdAt"</span>: <span class="json-str">"2026-02-28T10:00:00.000Z"</span>
+  }
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+<div style="text-align:center; padding: 40px 0 20px; color: #aaa; font-size: 11px;">
+  JobSarthi API Documentation — aspirantcareer.in — v2.0 — February 2026
+</div>
+
+</div><!-- end .content -->
+</body>
+</html>
