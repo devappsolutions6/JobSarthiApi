@@ -346,7 +346,7 @@
     Author: Vishal Kumar<br/>
     Version: 2.0<br/>
     Last Updated: March 2026<br/>
-    Total APIs: 23
+    Total APIs: 26
   </div>
 </div>
 
@@ -372,6 +372,13 @@
   <div class="toc-group">
     <div class="toc-group-title">Public Routes — Search ⭐ New</div>
     <a href="#search">GET /search — Job Search &amp; Suggestions (Autocomplete)</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Protected Routes — Bookmarks ⭐ New</div>
+    <a href="#bookmark-toggle">POST /user/bookmark/:jobId — Toggle Bookmark</a>
+    <a href="#bookmark-check">GET /user/bookmark/:jobId — Check Bookmark Status</a>
+    <a href="#bookmark-list">GET /user/bookmarks — Get All Saved Jobs</a>
   </div>
 
   <div class="toc-group">
@@ -601,6 +608,9 @@
             <span>Savepreferences → save/update job preferences (upsert)</span>
             <span>GetSaveData → return saved preferences</span>
             <span>recommendJobsController → return top 30 matched jobs (scoring engine)</span>
+            <span>toggleBookmark → save or unsave a job (POST /user/bookmark/:jobId) ⭐ New</span>
+            <span>checkBookmark → check if job is bookmarked (GET /user/bookmark/:jobId) ⭐ New</span>
+            <span>getBookmarks → return all saved jobs with full details (GET /user/bookmarks) ⭐ New</span>
           </div>
           <strong>Scoring engine</strong> in recommendJobsController uses MongoDB Aggregation Pipeline with weighted scoring: education (30pts) + stream (10pts) + location (20pts) + orgType (up to 25pts) + interests (up to 25pts). Minimum score 20 to appear in results.
         </div>
@@ -727,7 +737,7 @@
           <div class="func-list">
             <span>Public Routes (11 routes) — no auth needed</span>
             <span>Auth Routes (7 routes) — signup, login, OTP, password reset</span>
-            <span>Protected Routes (4 routes) — require JWT cookie</span>
+            <span>Protected Routes (7 routes) — require JWT cookie (includes 3 bookmark routes)</span>
             <span>Admin Routes (1 route) — add exam calendar entry</span>
           </div>
         </div>
@@ -1544,6 +1554,111 @@ GET /web/api/search?q=bank+po&amp;limit=8</pre>
     <div class="json-block"><pre>{
   <span class="json-key">"status"</span>: <span class="json-str">"success"</span>,
   <span class="json-key">"message"</span>: <span class="json-str">"Password reset successfully! You can now log in."</span>
+}</pre></div>
+  </div>
+
+</div><!-- end api-card -->
+
+
+<!-- ══════════════════════════════════════════
+     BOOKMARK API  ⭐ NEW
+══════════════════════════════════════════ -->
+<div class="section-header" style="background: linear-gradient(90deg, #0d9488, #059669);">
+  Protected Routes — Bookmarks &nbsp;<span style="font-size:12px;font-weight:500;background:rgba(255,255,255,0.2);border-radius:12px;padding:2px 10px;">⭐ New APIs</span>
+</div>
+<div class="api-card">
+
+  <div class="info-box" style="margin:16px 24px 0;">
+    Bookmark (save/unsave) jobs. Requires JWT cookie. <br/>
+    <strong>Model:</strong> <code>savedjobs</code> collection — unique index on <code>(userId, jobId)</code> pair prevents duplicate saves.<br/>
+    <strong>Frontend behaviour:</strong> Logged-in users → API (cross-device sync). Guest users → <code>localStorage</code> fallback.
+  </div>
+
+  <!-- 24. POST /user/bookmark/:jobId -->
+  <div id="bookmark-toggle" class="api-item">
+    <div class="endpoint-row">
+      <span class="method POST">POST</span>
+      <span class="endpoint">/user/bookmark/:jobId</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">
+      Toggle bookmark: if the job is <em>not</em> saved → saves it; if already saved → removes it.
+      Returns the new bookmark state.
+    </div>
+
+    <div class="block-title">URL Parameter</div>
+    <table>
+      <thead><tr><th>Param</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>jobId</code></td><td>String</td><td>MongoDB ObjectId of the job</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Response — Job saved (201)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"bookmarked"</span>: <span class="json-bool">true</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Job saved to bookmarks"</span>
+}</pre></div>
+
+    <div class="block-title">Response — Job removed (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"bookmarked"</span>: <span class="json-bool">false</span>,
+  <span class="json-key">"message"</span>: <span class="json-str">"Job removed from bookmarks"</span>
+}</pre></div>
+  </div>
+
+  <!-- 25. GET /user/bookmark/:jobId -->
+  <div id="bookmark-check" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/user/bookmark/:jobId</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Check whether a specific job is bookmarked by the current user. Used by <code>BookmarkButton</code> on page load to set the initial filled/unfilled icon state.</div>
+
+    <div class="block-title">Response (200)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"bookmarked"</span>: <span class="json-bool">true</span>
+}</pre></div>
+  </div>
+
+  <!-- 26. GET /user/bookmarks -->
+  <div id="bookmark-list" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/user/bookmarks</span>
+      <span class="auth-badge">JWT Required</span>
+    </div>
+    <div class="api-desc">Returns all jobs saved by the logged-in user, sorted by most recently saved. Populated with job details via Mongoose <code>.populate()</code>.</div>
+
+    <div class="block-title">Response Fields</div>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>data</code></td><td>Array</td><td>Array of job objects</td></tr>
+        <tr><td><code>data[].title</code></td><td>String</td><td>Job title</td></tr>
+        <tr><td><code>data[].conductingBody</code></td><td>String</td><td>Conducting organisation</td></tr>
+        <tr><td><code>data[].jobDomains</code></td><td>Array</td><td>Domains e.g. Railway, Police</td></tr>
+        <tr><td><code>data[].vacancies.total</code></td><td>Number</td><td>Total vacancies</td></tr>
+        <tr><td><code>data[].importantDates.applyEnd</code></td><td>Date</td><td>Application last date</td></tr>
+        <tr><td><code>data[].isActive</code></td><td>Boolean</td><td>Whether job is still active</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Example Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"64abc123..."</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"SSC CGL 2025"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"SSC"</span>,
+      <span class="json-key">"jobDomains"</span>: [<span class="json-str">"Central"</span>],
+      <span class="json-key">"location"</span>: <span class="json-str">"All India"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-key">"total"</span>: <span class="json-num">17727</span> },
+      <span class="json-key">"importantDates"</span>: { <span class="json-key">"applyEnd"</span>: <span class="json-str">"2025-07-31T00:00:00.000Z"</span> },
+      <span class="json-key">"isActive"</span>: <span class="json-bool">true</span>
+    }
+  ]
 }</pre></div>
   </div>
 

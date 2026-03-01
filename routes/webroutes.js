@@ -34,6 +34,9 @@ const {
   Savepreferences,
   GetSaveData,
   recommendJobsController,
+  toggleBookmark,
+  checkBookmark,
+  getBookmarks,
 } = require("../controller/userController");
 
 const router = express.Router();
@@ -71,5 +74,10 @@ router.get("/user/profile", authMiddleware, profileController);
 router.post("/user/save-preferences", authMiddleware, Savepreferences);
 router.get("/getUserData", authMiddleware, GetSaveData);
 router.get("/user/preferencesJobs", authMiddleware, recommendJobsController);
+
+// Bookmark routes
+router.post("/user/bookmark/:jobId", authMiddleware, toggleBookmark);
+router.get("/user/bookmark/:jobId",  authMiddleware, checkBookmark);
+router.get("/user/bookmarks",        authMiddleware, getBookmarks);
 
 module.exports = router;

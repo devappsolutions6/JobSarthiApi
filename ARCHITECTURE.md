@@ -19,7 +19,8 @@
    - 6.2 [Search API](#62-search-api-new) ⭐ New
    - 6.3 [Auth Routes](#63-auth-routes)
    - 6.4 [Protected Routes](#64-protected-routes)
-   - 6.5 [Health Check](#65-health-check)
+   - 6.5 [Bookmark API](#65-bookmark-api-new) ⭐ New
+   - 6.6 [Health Check](#66-health-check)
 7. [Authentication Flow](#7-authentication-flow)
 8. [Caching Strategy](#8-caching-strategy)
 9. [Scalability Setup](#9-scalability-setup)
@@ -434,14 +435,79 @@ Navigates to: /details/[slug]/[_id]
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/user/profile` | Get logged-in user details |
-| POST | `/user/save-preferences` | Save job preferences |
-| GET | `/getUserData` | Get saved preferences |
-| GET | `/user/preferencesJobs` | Get personalized job recommendations |
+| GET  | `/user/profile`           | Get logged-in user details |
+| POST | `/user/save-preferences`  | Save job preferences |
+| GET  | `/getUserData`            | Get saved preferences |
+| GET  | `/user/preferencesJobs`   | Get personalized job recommendations |
+| POST | `/user/bookmark/:jobId`   | Toggle bookmark (save / unsave) |
+| GET  | `/user/bookmark/:jobId`   | Check if a job is bookmarked |
+| GET  | `/user/bookmarks`         | Get all bookmarked jobs |
 
 ---
 
-### 6.5 Health Check
+### 6.5 Bookmark API ⭐ New
+
+Allows authenticated users to save/unsave jobs across devices.
+
+**Model:** `savedjobs` collection (userId + jobId unique pair)
+
+#### Toggle Bookmark
+```
+POST /web/api/user/bookmark/:jobId
+Auth: Required (JWT cookie)
+```
+- If job is **not saved** → creates record → returns `{ bookmarked: true }`
+- If job **already saved** → deletes record → returns `{ bookmarked: false }`
+
+**Response:**
+```json
+{ "bookmarked": true, "message": "Job saved to bookmarks" }
+```
+
+#### Check Bookmark
+```
+GET /web/api/user/bookmark/:jobId
+Auth: Required (JWT cookie)
+```
+**Response:**
+```json
+{ "bookmarked": false }
+```
+
+#### Get All Bookmarks
+```
+GET /web/api/user/bookmarks
+Auth: Required (JWT cookie)
+```
+Returns array of full job objects (title, conductingBody, department, jobDomains, location, vacancies, importantDates, isActive).
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "_id": "...",
+      "title": "SSC CGL 2025",
+      "conductingBody": "SSC",
+      "jobDomains": ["Central"],
+      "location": "All India",
+      "vacancies": { "total": 17727 },
+      "importantDates": { "applyEnd": "2025-07-31T00:00:00.000Z" },
+      "isActive": true
+    }
+  ]
+}
+```
+
+**Frontend behaviour:**
+- Logged-in users → API (synced across devices)
+- Guest users → localStorage fallback (stored in `js_bookmarks` key)
+- `BookmarkButton.tsx` checks auth via `useAuth()` and routes accordingly
+- Share buttons in `ShareButtons.tsx` generate WhatsApp, Telegram, and copy-link sharing
+
+---
+
+### 6.6 Health Check
 
 | Method | Endpoint | Description |
 |---|---|---|

@@ -452,6 +452,18 @@ ExamCalendarSchema.index({ date: 1, category: 1 });
 const ExamCalendarData = mongoose.model("examcalendar", ExamCalendarSchema);
 
 
+// Saved / Bookmarked Jobs Schema
+const SavedJobSchema = new mongoose.Schema(
+  {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "accounts", required: true },
+    jobId:  { type: mongoose.Schema.Types.ObjectId, ref: "jobs",     required: true },
+  },
+  { timestamps: true }
+);
+SavedJobSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+const SavedJobData = mongoose.model("savedjobs", SavedJobSchema);
+
+
 module.exports = {
   AnnouncementData,
   JobsSchemaDatas,
@@ -460,4 +472,5 @@ module.exports = {
   UserSignupSchemaDatas,
   UserprefrenceData,
   ExamCalendarData,
+  SavedJobData,
 };

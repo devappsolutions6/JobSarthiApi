@@ -1,4 +1,4 @@
-const { UserprefrenceData, JobsSchemaDatas } = require("../models/webmodel");
+const { UserprefrenceData, JobsSchemaDatas, SavedJobData } = require("../models/webmodel");
 
 
 
@@ -383,9 +383,66 @@ const recommendJobsController = async (req, res) => {
 
 
 
-module.exports ={
-    profileController,
-    Savepreferences,
-    GetSaveData,
-    recommendJobsController
+/* ────────────────────────────────────────────
+   BOOKMARK CONTROLLERS
+──────────────────────────────────────────── */
+
+// POST /user/bookmark/:jobId  → toggle (save / unsave)
+const toggleBookmark = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { jobId } = req.params;
+
+    const existing = await SavedJobData.findOne({ userId, jobId });
+    if (existing) {
+      await SavedJobData.deleteOne({ userId, jobId });
+      return res.json({ bookmarked: false, message: "Job removed from bookmarks" });
+    }
+
+    await SavedJobData.create({ userId, jobId });
+    return res.json({ bookmarked: true, message: "Job saved to bookmarks" });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to toggle bookmark", details: error.message });
+  }
+};
+
+// GET /user/bookmark/:jobId  → check if bookmarked
+const checkBookmark = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { jobId } = req.params;
+    const exists = await SavedJobData.findOne({ userId, jobId });
+    return res.json({ bookmarked: !!exists });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to check bookmark", details: error.message });
+  }
+};
+
+// GET /user/bookmarks  → get all saved jobs with basic details
+const getBookmarks = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const saved = await SavedJobData.find({ userId })
+      .populate(
+        "jobId",
+        "title conductingBody department jobDomains location vacancies importantDates isActive updatedAt"
+      )
+      .sort({ createdAt: -1 });
+
+    const data = saved.map((s) => s.jobId).filter(Boolean);
+    return res.json({ data });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to fetch bookmarks", details: error.message });
+  }
+};
+
+
+module.exports = {
+  profileController,
+  Savepreferences,
+  GetSaveData,
+  recommendJobsController,
+  toggleBookmark,
+  checkBookmark,
+  getBookmarks,
 }
