@@ -345,8 +345,8 @@
   <div class="meta">
     Author: Vishal Kumar<br/>
     Version: 2.0<br/>
-    Last Updated: February 2026<br/>
-    Total APIs: 22
+    Last Updated: March 2026<br/>
+    Total APIs: 23
   </div>
 </div>
 
@@ -367,6 +367,11 @@
     <div class="toc-group-title">Base URL &amp; Auth</div>
     <a href="#baseurl">Base URL</a>
     <a href="#auth-flow">Authentication Flow</a>
+  </div>
+
+  <div class="toc-group">
+    <div class="toc-group-title">Public Routes — Search ⭐ New</div>
+    <a href="#search">GET /search — Job Search &amp; Suggestions (Autocomplete)</a>
   </div>
 
   <div class="toc-group">
@@ -637,6 +642,7 @@
             <span>JobCategoryController → jobs by domain type</span>
             <span>getExamCalendar → upcoming exam events (filter by month/year/category)</span>
             <span>addExamCalendar → add new exam calendar entry (admin)</span>
+            <span>searchJobs → real-time multi-field job search for autocomplete suggestions ⭐ New</span>
             <span>logutController → clear JWT cookie</span>
           </div>
         </div>
@@ -719,7 +725,7 @@
           Single routes file for the entire API. Mounts all controllers onto URL paths.<br/>
           <strong>Sections:</strong>
           <div class="func-list">
-            <span>Public Routes (10 routes) — no auth needed</span>
+            <span>Public Routes (11 routes) — no auth needed</span>
             <span>Auth Routes (7 routes) — signup, login, OTP, password reset</span>
             <span>Protected Routes (4 routes) — require JWT cookie</span>
             <span>Admin Routes (1 route) — add exam calendar entry</span>
@@ -819,6 +825,170 @@
     <strong>Protected APIs:</strong> The JWT cookie is sent automatically by the browser with every request. No manual header needed.
   </div>
 </div>
+
+
+<!-- ══════════════════════════════════════════
+     PUBLIC — SEARCH (NEW)
+══════════════════════════════════════════ -->
+<div class="section-header" style="background: linear-gradient(90deg, #0d9488, #0891b2);">
+  Public Routes — Search &nbsp;<span style="font-size:12px;font-weight:500;background:rgba(255,255,255,0.2);border-radius:12px;padding:2px 10px;">⭐ New API</span>
+</div>
+<div class="api-card">
+
+  <!-- GET /search -->
+  <div id="search" class="api-item">
+    <div class="endpoint-row">
+      <span class="method GET">GET</span>
+      <span class="endpoint">/search</span>
+      <span class="public-badge">Public</span>
+      <span style="margin-left:8px;font-size:11px;background:#0d9488;color:#fff;border-radius:10px;padding:2px 10px;font-weight:600;">New</span>
+    </div>
+    <div class="api-desc">
+      Real-time job search API for autocomplete suggestions. Searches across multiple fields simultaneously using a case-insensitive regex. Returns only the fields needed for suggestion UI — making the response lightweight and fast.
+      <br/><br/>
+      <strong>Powers:</strong> The SearchBar component on <code>aspirantcareer.in</code> homepage. User types → debounce 280ms → this API → suggestion dropdown with domain badges, vacancy count, and last date.
+    </div>
+
+    <div class="block-title">Query Parameters</div>
+    <table>
+      <thead>
+        <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>q</code></td>
+          <td>String</td>
+          <td><span class="required">Required</span></td>
+          <td>—</td>
+          <td>Search keyword. Empty string returns empty array without DB query.</td>
+        </tr>
+        <tr>
+          <td><code>limit</code></td>
+          <td>Number</td>
+          <td><span class="optional">Optional</span></td>
+          <td>8</td>
+          <td>Maximum results to return. Hard capped at 20.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Fields Searched (Multi-field OR query)</div>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Example Values</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>title</code></td><td>"SSC GD Constable 2025"</td><td>Primary search field — has DB index</td></tr>
+        <tr><td><code>department</code></td><td>"SSC", "UPSC", "RRB"</td><td>Short org name</td></tr>
+        <tr><td><code>conductingBody</code></td><td>"Staff Selection Commission"</td><td>Full official name</td></tr>
+        <tr><td><code>jobDomains</code></td><td>"Railway", "Police", "Banking"</td><td>Array of domain strings</td></tr>
+        <tr><td><code>tags</code></td><td>"10th Pass", "Graduate", "SSC"</td><td>Indexed keyword tags</td></tr>
+        <tr><td><code>searchKeywords</code></td><td>"constable", "group d"</td><td>Custom indexed keywords</td></tr>
+        <tr><td><code>location</code></td><td>"All India", "Uttar Pradesh"</td><td>Job location field</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Filters Applied</div>
+    <div class="info-box">
+      • Only <code>isActive: true</code> jobs are returned<br/>
+      • Results sorted by <code>createdAt</code> descending (newest first)<br/>
+      • No Redis caching — search must always return fresh results<br/>
+      • Query timeout protected by MongoDB's default read timeout
+    </div>
+
+    <div class="block-title">Response Fields (Projection — lightweight)</div>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>_id</code></td><td>ObjectId</td><td>MongoDB document ID — used to build the detail page URL</td></tr>
+        <tr><td><code>title</code></td><td>String</td><td>Full job title</td></tr>
+        <tr><td><code>department</code></td><td>String</td><td>Short department name</td></tr>
+        <tr><td><code>conductingBody</code></td><td>String</td><td>Full conducting organization name</td></tr>
+        <tr><td><code>jobDomains</code></td><td>[String]</td><td>Domain array — used for color-coded badges in UI</td></tr>
+        <tr><td><code>location</code></td><td>String</td><td>Job location</td></tr>
+        <tr><td><code>vacancies.total</code></td><td>Number</td><td>Total vacancy count — shown as "X posts" badge</td></tr>
+        <tr><td><code>importantDates.applyEnd</code></td><td>Date</td><td>Last date to apply — shown as red "Last: DD Mon" badge</td></tr>
+      </tbody>
+    </table>
+
+    <div class="block-title">Example Requests</div>
+    <div class="json-block">
+      <pre>GET /web/api/search?q=railway
+GET /web/api/search?q=SSC&amp;limit=5
+GET /web/api/search?q=UP+police+constable&amp;limit=10
+GET /web/api/search?q=bank+po&amp;limit=8</pre>
+    </div>
+
+    <div class="block-title">Success Response — Results Found</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Search results"</span>,
+  <span class="json-key">"data"</span>: [
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"64f1a2b3c4d5e6f7a8b9c0d1"</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"RRB Group D 2025"</span>,
+      <span class="json-key">"department"</span>: <span class="json-str">"RRB"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"Railway Recruitment Board"</span>,
+      <span class="json-key">"jobDomains"</span>: [<span class="json-str">"Railway"</span>],
+      <span class="json-key">"location"</span>: <span class="json-str">"All India"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-key">"total"</span>: <span class="json-num">32438</span> },
+      <span class="json-key">"importantDates"</span>: {
+        <span class="json-key">"applyEnd"</span>: <span class="json-str">"2025-04-15T00:00:00.000Z"</span>
+      }
+    },
+    {
+      <span class="json-key">"_id"</span>: <span class="json-str">"64f1a2b3c4d5e6f7a8b9c0d2"</span>,
+      <span class="json-key">"title"</span>: <span class="json-str">"RRB NTPC Graduate 2025"</span>,
+      <span class="json-key">"department"</span>: <span class="json-str">"RRB"</span>,
+      <span class="json-key">"conductingBody"</span>: <span class="json-str">"Railway Recruitment Board"</span>,
+      <span class="json-key">"jobDomains"</span>: [<span class="json-str">"Railway"</span>],
+      <span class="json-key">"location"</span>: <span class="json-str">"Zone-wise"</span>,
+      <span class="json-key">"vacancies"</span>: { <span class="json-key">"total"</span>: <span class="json-num">11558</span> },
+      <span class="json-key">"importantDates"</span>: {
+        <span class="json-key">"applyEnd"</span>: <span class="json-str">"2025-05-01T00:00:00.000Z"</span>
+      }
+    }
+  ]
+}</pre></div>
+
+    <div class="block-title">Empty Query Response (q="" or q not sent)</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"message"</span>: <span class="json-str">"Search results"</span>,
+  <span class="json-key">"data"</span>: []
+}</pre></div>
+
+    <div class="block-title">Error Response</div>
+    <div class="json-block"><pre>{
+  <span class="json-key">"error"</span>: <span class="json-str">"Search failed"</span>,
+  <span class="json-key">"details"</span>: <span class="json-str">"..."</span>
+}</pre></div>
+
+    <div class="block-title">Frontend Flow</div>
+    <div class="info-box">
+      <strong>SearchBar component</strong> (<code>src/components/Search/SearchBar.tsx</code>)<br/><br/>
+      1. User types in search input<br/>
+      2. Frontend debounces 280ms before calling API<br/>
+      3. <code>GET /web/api/search?q={query}&amp;limit=8</code><br/>
+      4. Dropdown shows up to 8 suggestions with:<br/>
+      &nbsp;&nbsp;&nbsp;• Matching text highlighted in teal<br/>
+      &nbsp;&nbsp;&nbsp;• Domain color-coded badge (Railway=blue, Police=orange, Banking=green…)<br/>
+      &nbsp;&nbsp;&nbsp;• Vacancy count badge (green)<br/>
+      &nbsp;&nbsp;&nbsp;• Last date badge (red)<br/>
+      5. Click suggestion → navigate to <code>/details/[slug]/[_id]</code>
+    </div>
+
+    <div class="block-title">Performance Notes</div>
+    <div class="info-box">
+      • <strong>No Redis cache</strong> — search results must always be real-time and fresh<br/>
+      • <strong>MongoDB index</strong> on <code>title</code> field makes regex queries fast<br/>
+      • <strong>Projection</strong> — only 7 fields returned (not full document) → small payload (~200–500 bytes/result)<br/>
+      • <strong>Hard cap</strong> at 20 results — prevents expensive large queries<br/>
+      • <strong>Frontend debounce</strong> at 280ms — reduces API calls while typing
+    </div>
+  </div><!-- end #search -->
+
+</div><!-- end api-card -->
 
 
 <!-- ══════════════════════════════════════════

@@ -1,7 +1,7 @@
 # JobSarthi API — Architecture Documentation
 
 > Author: Vishal Kumar
-> Last Updated: February 2026
+> Last Updated: March 2026
 > Deployed On: Render
 > Frontend: https://www.aspirantcareer.in
 
@@ -15,6 +15,11 @@
 4. [Architecture Diagram](#4-architecture-diagram)
 5. [Database Models](#5-database-models)
 6. [API Reference](#6-api-reference)
+   - 6.1 [Public Routes](#61-public-routes)
+   - 6.2 [Search API](#62-search-api-new) ⭐ New
+   - 6.3 [Auth Routes](#63-auth-routes)
+   - 6.4 [Protected Routes](#64-protected-routes)
+   - 6.5 [Health Check](#65-health-check)
 7. [Authentication Flow](#7-authentication-flow)
 8. [Caching Strategy](#8-caching-strategy)
 9. [Scalability Setup](#9-scalability-setup)
@@ -233,10 +238,13 @@ Linked to user via `userId` (ref: accounts).
 
 Base URL: `https://api.aspirantcareer.in/web/api`
 
-### Public Routes (No login required)
+---
+
+### 6.1 Public Routes
 
 | Method | Endpoint | Description | Query Params |
 |---|---|---|---|
+| GET | `/search` | **Job search with suggestions** ⭐ | `q`, `limit` |
 | GET | `/getJobs` | All jobs with pagination | `page`, `limit`, `search` |
 | GET | `/hompageJobs` | Jobs for homepage (limited fields) | — |
 | GET | `/getJobs/:id` | Single job by MongoDB ID | — |
@@ -244,17 +252,185 @@ Base URL: `https://api.aspirantcareer.in/web/api`
 | GET | `/getresultcards` | All results with pagination | `page`, `limit`, `category`, `search` |
 | GET | `/announcement` | Latest 4 jobs + 4 admit cards + 4 results | — |
 | GET | `/Jobs-category/:type` | Jobs filtered by domain type | type = Central/State/Railway etc. |
+| GET | `/exam-calendar` | Upcoming exam dates | `month`, `year`, `category` |
 | GET | `/logout` | Clear auth cookie | — |
 
-### Auth Routes
+---
+
+### 6.2 Search API (New)
+
+> Used for real-time autocomplete search suggestions on the frontend.
+
+**Endpoint**
+
+```
+GET /web/api/search
+```
+
+**Query Parameters**
+
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `q` | string | Yes | — | Search keyword (min 1 char) |
+| `limit` | number | No | `8` | Max results to return (max: 20) |
+
+**Searched Fields**
+
+The API searches across multiple fields simultaneously using a **case-insensitive regex**:
+
+| Field | Example Match |
+|---|---|
+| `title` | "SSC GD Constable 2025" |
+| `department` | "SSC", "UPSC", "RRB" |
+| `conductingBody` | "Staff Selection Commission" |
+| `jobDomains` | "Railway", "Police", "Banking" |
+| `tags` | "10th Pass", "Graduate" |
+| `searchKeywords` | Custom indexed keywords |
+| `location` | "All India", "Uttar Pradesh" |
+
+**Filters Applied**
+
+- Only `isActive: true` jobs are returned
+- Results sorted by `createdAt` descending (newest first)
+
+**Response Fields**
+
+Each result includes only the fields needed for suggestion UI (lightweight response):
+
+```json
+{
+  "message": "Search results",
+  "data": [
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
+      "title": "SSC GD Constable 2025",
+      "department": "SSC",
+      "conductingBody": "Staff Selection Commission",
+      "jobDomains": ["Central", "Police"],
+      "location": "All India",
+      "vacancies": {
+        "total": 39481
+      },
+      "importantDates": {
+        "applyEnd": "2025-03-31T00:00:00.000Z"
+      }
+    }
+  ]
+}
+```
+
+**Example Requests**
+
+```bash
+# Search for "railway" jobs (default 8 results)
+GET /web/api/search?q=railway
+
+# Search for "SSC" with 5 results
+GET /web/api/search?q=SSC&limit=5
+
+# Search for "UP police constable"
+GET /web/api/search?q=UP+police+constable
+```
+
+**Example Responses**
+
+Success (results found):
+```json
+{
+  "message": "Search results",
+  "data": [
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
+      "title": "RRB Group D 2025",
+      "conductingBody": "Railway Recruitment Board",
+      "jobDomains": ["Railway"],
+      "location": "All India",
+      "vacancies": { "total": 32438 },
+      "importantDates": { "applyEnd": "2025-04-15T00:00:00.000Z" }
+    },
+    {
+      "_id": "64f1a2b3c4d5e6f7a8b9c0d2",
+      "title": "RRB NTPC Graduate 2025",
+      "conductingBody": "Railway Recruitment Board",
+      "jobDomains": ["Railway"],
+      "location": "Zone-wise",
+      "vacancies": { "total": 11558 },
+      "importantDates": { "applyEnd": "2025-05-01T00:00:00.000Z" }
+    }
+  ]
+}
+```
+
+Empty query (returns empty array without hitting DB):
+```json
+{
+  "message": "Search results",
+  "data": []
+}
+```
+
+No results found:
+```json
+{
+  "message": "Search results",
+  "data": []
+}
+```
+
+Error:
+```json
+{
+  "error": "Search failed",
+  "details": "..."
+}
+```
+
+**Frontend Usage**
+
+The search API powers the `SearchBar` component (`src/components/Search/SearchBar.tsx`):
+
+```
+User types "railway"
+       ↓ debounce 280ms
+GET /web/api/search?q=railway&limit=8
+       ↓
+Returns 8 matching jobs
+       ↓
+Displayed as suggestion dropdown with:
+  - Title (matching text highlighted in teal)
+  - Conducting body + location
+  - Domain color badges
+  - Vacancy count + last application date
+       ↓
+User clicks suggestion
+       ↓
+Navigates to: /details/[slug]/[_id]
+```
+
+**Performance Notes**
+
+- No Redis caching on this endpoint (real-time search must be fresh)
+- MongoDB regex query is fast due to `title` index on jobs collection
+- Response payload is small (~200–500 bytes per result) — only 7 fields returned
+- Debounced at 280ms on frontend to reduce API calls
+
+---
+
+### 6.3 Auth Routes
 
 | Method | Endpoint | Description | Rate Limit |
 |---|---|---|---|
 | POST | `/userSignup` | Register new user | 40 req/hour per IP |
-| GET | `/verify-email?token=` | Verify email address | — |
+| POST | `/verify-otp` | Verify OTP sent to email | — |
+| POST | `/resend-otp` | Resend OTP to email | — |
 | POST | `/login` | Login and get JWT cookie | 40 req/15min per IP |
+| POST | `/forgot-password` | Request password reset OTP | Rate limited |
+| POST | `/verify-reset-otp` | Verify reset OTP | — |
+| POST | `/reset-password` | Set new password | — |
 
-### Protected Routes (JWT cookie required)
+---
+
+### 6.4 Protected Routes (JWT cookie required)
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -263,7 +439,9 @@ Base URL: `https://api.aspirantcareer.in/web/api`
 | GET | `/getUserData` | Get saved preferences |
 | GET | `/user/preferencesJobs` | Get personalized job recommendations |
 
-### Health Check
+---
+
+### 6.5 Health Check
 
 | Method | Endpoint | Description |
 |---|---|---|
