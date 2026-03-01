@@ -64,7 +64,7 @@ const Savepreferences = async (req, res) => {
       gender = "any",
       organizationTypes = [],
       interests = [],
-     
+      dob,
     } = req.body;
 
     //  Minimum data check
@@ -91,7 +91,7 @@ const Savepreferences = async (req, res) => {
       gender,
       organizationTypes,
       interests,
-    
+      ...(dob ? { dob: new Date(dob) } : {}),
     };
 
     const savedPreference = await UserprefrenceData.findOneAndUpdate(
@@ -147,6 +147,8 @@ const recommendJobsController = async (req, res) => {
       organizationTypes = [],
       interests = [],
       gender = "any",
+      dob,
+      category: userCategory = "",
     } = userPref;
 
     // ── Normalize inputs ──────────────────────────────────────────────────────
@@ -157,6 +159,15 @@ const recommendJobsController = async (req, res) => {
     const normalizedInterests = interests.map(i => i.toLowerCase().trim());
     const normalizedGender    = (gender || "any").toLowerCase();
     const today               = new Date();
+
+    // ── Age calculation (for soft scoring) ────────────────────────────────────
+    // SC/ST get +5 yr, OBC get +3 yr — we add max possible relaxation buffer
+    // so valid jobs are never excluded
+    const categoryRelaxation  = ["sc","st"].includes((userCategory||"").toLowerCase()) ? 5
+                              : (userCategory||"").toLowerCase() === "obc" ? 3 : 0;
+    const userAge = dob
+      ? Math.floor((today - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000))
+      : null;
 
     // ── Education cascade ─────────────────────────────────────────────────────
     // User with "12th" (rank 2) → eligible for jobs needing 10th (1) or 12th (2)
@@ -302,6 +313,29 @@ const recommendJobsController = async (req, res) => {
           eduStreamMatch:    eduStreamMatchExpr,
           hasGenderVacancy:  genderMatchExpr,
           isExactStateMatch: exactStateMatchExpr,
+
+          // Age match: job's NUMBER-based age criteria fits user's age (with category relaxation)
+          // Soft bonus only — never excludes a job. Buffer for relaxations already applied.
+          ageMatch: userAge !== null ? {
+            $cond: {
+              if: {
+                $or: [
+                  // No NUMBER-based criteria → assume open/unspecified → neutral
+                  { $ne: ["$ageCriteria.type", "NUMBER"] },
+                  { $not: { $ifNull: ["$ageCriteria.numberBased", false] } },
+                  // User's age is within the allowed range (+ category relaxation buffer)
+                  {
+                    $and: [
+                      { $lte: [{ $ifNull: ["$ageCriteria.numberBased.min", 0] },  userAge] },
+                      { $gte: [{ $add:  [{ $ifNull: ["$ageCriteria.numberBased.max", 99] }, categoryRelaxation] }, userAge] },
+                    ],
+                  },
+                ],
+              },
+              then: 1,  // age-eligible: boost slightly
+              else: 0,  // over-age (no penalty, hard block not applied)
+            },
+          } : { $literal: 1 },  // unknown age → treat as eligible
         },
       },
 
@@ -312,6 +346,7 @@ const recommendJobsController = async (req, res) => {
       //   Exact state     : 20 pts bonus             (prefer state-specific over All-India)
       //   Gender vacancy  : 10 pts bonus
       //   Edu stream      : 10 pts bonus
+      //   Age match       : 12 pts bonus             (user within job age limit)
       {
         $addFields: {
           relevanceScore: {
@@ -321,6 +356,7 @@ const recommendJobsController = async (req, res) => {
               { $cond: ["$isExactStateMatch", 20, 0] },
               { $cond: ["$hasGenderVacancy",  10, 0] },
               { $cond: ["$eduStreamMatch",    10, 0] },
+              { $cond: [{ $eq: ["$ageMatch", 1] }, 12, 0] },
             ],
           },
         },

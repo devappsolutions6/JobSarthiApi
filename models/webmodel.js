@@ -411,13 +411,16 @@ const UserPreferenceSchema = new mongoose.Schema(
 
     // 🧠 INTERESTS (maps to metaTags & searchKeywords)
     interests: {
-      type: [String], 
+      type: [String],
       // ["constable", "technical", "government", "clerk"]
       default: [],
       index: true,
     },
 
-  
+    // 🎂 DATE OF BIRTH (for age-limit based job filtering & scoring)
+    dob: { type: Date },
+
+
   },
   { timestamps: true }
 );
