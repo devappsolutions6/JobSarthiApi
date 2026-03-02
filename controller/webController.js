@@ -53,7 +53,11 @@ const _getAnnouncement = async (req, res) => {
 const getJobs = async (req, res) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
-    const filter = { isActive: true };
+    const today = new Date();
+    const filter = {
+      isActive: true,
+      "importantDates.applyEnd": { $not: { $lt: today } },
+    };
     if (search) filter.title = { $regex: search, $options: "i" };
 
     const cacheKey = `jobs_p${page}_l${limit}_s${search || ""}`;
@@ -102,8 +106,8 @@ const getJobById = async (req, res) => {
 const getHomePageJobs = async (req, res) => {
   try {
     const JobsData = await JobsSchemaDatas.find(
-      {},
-    { _id: 1, title: 1, JobId: 1, "vacancies.total":1, 
+      { "importantDates.applyEnd": { $not: { $lt: new Date() } } },
+    { _id: 1, title: 1, JobId: 1, "vacancies.total":1,
       "importantDates.applyStart": 1,
       "importantDates.applyEnd":1,
       "conductingBody":1,
@@ -206,7 +210,8 @@ const JobCategoryController = async (req, res) => {
       {
         $match: {
           isActive: true,
-          jobDomains: type
+          jobDomains: type,
+          "importantDates.applyEnd": { $not: { $lt: new Date() } },
         }
       },
      {
