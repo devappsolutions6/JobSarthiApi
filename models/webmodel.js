@@ -420,6 +420,17 @@ const UserPreferenceSchema = new mongoose.Schema(
     // 🎂 DATE OF BIRTH (for age-limit based job filtering & scoring)
     dob: { type: Date },
 
+    // 🎯 SELECTION PROCESS PREFERENCE
+    // Maps to job's selectionProcess[].stage  →  CBT / PET / Interview
+    // "written"   → prefers written/CBT-only jobs  (SSC, Banking, Railway Clerk)
+    // "pet"       → prefers physical-test jobs     (Police, Defence, Constable)
+    // "interview" → prefers interview-based jobs   (UPSC, Teaching, PSU Officers)
+    // "any"       → no preference
+    selectionPreference: {
+      type: String,
+      enum: ["any", "written", "pet", "interview"],
+      default: "any",
+    },
 
   },
   { timestamps: true }

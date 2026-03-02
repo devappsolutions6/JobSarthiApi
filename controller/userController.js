@@ -64,6 +64,7 @@ const Savepreferences = async (req, res) => {
       gender = "any",
       organizationTypes = [],
       interests = [],
+      selectionPreference = "any",
       dob,
     } = req.body;
 
@@ -91,6 +92,7 @@ const Savepreferences = async (req, res) => {
       gender,
       organizationTypes,
       interests,
+      selectionPreference,
       ...(dob ? { dob: new Date(dob) } : {}),
     };
 
@@ -149,15 +151,22 @@ const recommendJobsController = async (req, res) => {
       gender = "any",
       dob,
       category: userCategory = "",
+      selectionPreference = "any",
     } = userPref;
 
     // ── Normalize inputs ──────────────────────────────────────────────────────
-    const educationLevels    = (education.levels || []).map(l => l.toLowerCase().trim());
-    const educationStreams    = (education.stream  || []).map(s => s.toLowerCase().trim());
-    const normalizedLocations = preferredLocations.map(l => l.toLowerCase().trim());
-    const normalizedOrgTypes  = organizationTypes.map(o => o.toLowerCase().trim());
-    const normalizedInterests = interests.map(i => i.toLowerCase().trim());
-    const normalizedGender    = (gender || "any").toLowerCase();
+    const educationLevels           = (education.levels        || []).map(l => l.toLowerCase().trim());
+    const educationStreams           = (education.stream        || []).map(s => s.toLowerCase().trim());
+    const normalizedSpecializations = (education.specialization || []).map(s => s.toLowerCase().trim());
+    const normalizedLocations       = preferredLocations.map(l => l.toLowerCase().trim());
+    const normalizedOrgTypes        = organizationTypes.map(o => o.toLowerCase().trim());
+    const normalizedInterests       = interests.map(i => i.toLowerCase().trim());
+    const normalizedGender          = (gender || "any").toLowerCase();
+    const normalizedSelPref         = (selectionPreference || "any").toLowerCase();
+    // Category-specific vacancy field (null for GEN → no targeted boost needed)
+    const catVacField = ["obc", "sc", "st", "ews"].includes((userCategory || "").toLowerCase())
+      ? (userCategory || "").toLowerCase()
+      : null;
     const today               = new Date();
 
     // ── Age calculation (for soft scoring) ────────────────────────────────────
@@ -255,6 +264,31 @@ const recommendJobsController = async (req, res) => {
         }
       : { $literal: false };
 
+    // Specialization match count expression
+    // Matches user's specialization against job's eligibility.education[].specialization,
+    // jobDomains, and searchKeywords — covers both structured and keyword-tagged jobs
+    const specializationMatchExpr = normalizedSpecializations.length > 0
+      ? {
+          $size: {
+            $setIntersection: [
+              {
+                $map: {
+                  input: {
+                    $concatArrays: [
+                      { $map: { input: { $ifNull: ["$eligibility.education", []] }, as: "e", in: { $toLower: { $ifNull: ["$$e.specialization", ""] } } } },
+                      { $ifNull: ["$jobDomains",      []] },
+                      { $ifNull: ["$searchKeywords",  []] },
+                    ],
+                  },
+                  as: "s", in: { $toLower: "$$s" },
+                },
+              },
+              normalizedSpecializations,
+            ],
+          },
+        }
+      : { $literal: 0 };
+
     // Gender match: job breakup has vacancies for user's gender
     const genderMatchExpr = normalizedGender === "male"
       ? { $gt: [{ $size: { $filter: { input: { $ifNull: ["$vacancies.breakup", []] }, as: "b", cond: { $gt: [{ $ifNull: ["$$b.genderWise.male", 0] }, 0] } } } }, 0] }
@@ -266,6 +300,45 @@ const recommendJobsController = async (req, res) => {
     const exactStateMatchExpr = !wantsAllIndia && stateLocations.length > 0
       ? { $in: [{ $toLower: "$location" }, stateLocations] }
       : { $literal: false };
+
+    // Category-specific vacancy match
+    // Checks whether the job has at least one post with vacancies in user's category
+    // GEN users get no targeted boost (GEN vacancies are implicit in all jobs)
+    const categoryVacancyExpr = catVacField
+      ? {
+          $gt: [{
+            $size: {
+              $filter: {
+                input: { $ifNull: ["$vacancies.breakup", []] },
+                as: "b",
+                cond: { $gt: [{ $ifNull: [`$$b.categoryWise.${catVacField}`, 0] }, 0] },
+              },
+            },
+          }, 0],
+        }
+      : { $literal: false };
+
+    // Selection process preference match
+    // "written"   → job has CBT/OMR/Written stage but NO PET/Interview
+    // "pet"       → job has PET/Physical/Medical stage
+    // "interview" → job has Interview stage
+    const selectionStages = { $ifNull: [
+      { $map: { input: { $ifNull: ["$selectionProcess", []] }, as: "s",
+          in: { $toLower: { $ifNull: ["$$s.stage", ""] } } } },
+      [],
+    ]};
+
+    const selPrefMatchExpr =
+      normalizedSelPref === "written"
+        ? { $and: [
+            { $not: { $in: ["pet",       selectionStages] } },
+            { $not: { $in: ["interview", selectionStages] } },
+          ]}
+        : normalizedSelPref === "pet"
+          ? { $in: ["pet", selectionStages] }
+          : normalizedSelPref === "interview"
+            ? { $in: ["interview", selectionStages] }
+            : { $literal: false }; // "any" → no scoring signal
 
     const jobs = await JobsSchemaDatas.aggregate([
 
@@ -310,9 +383,12 @@ const recommendJobsController = async (req, res) => {
             },
           },
 
-          eduStreamMatch:    eduStreamMatchExpr,
-          hasGenderVacancy:  genderMatchExpr,
-          isExactStateMatch: exactStateMatchExpr,
+          specializationMatchCount: specializationMatchExpr,
+          hasCategoryVacancy:  categoryVacancyExpr,
+          selPrefMatch:        selPrefMatchExpr,
+          eduStreamMatch:      eduStreamMatchExpr,
+          hasGenderVacancy:    genderMatchExpr,
+          isExactStateMatch:   exactStateMatchExpr,
 
           // Age match: job's NUMBER-based age criteria fits user's age (with category relaxation)
           // Soft bonus only — never excludes a job. Buffer for relaxations already applied.
@@ -341,22 +417,28 @@ const recommendJobsController = async (req, res) => {
 
       // ── Relevance score ──────────────────────────────────────────────────────
       // Scoring guide:
-      //   Org type match  : 15 pts × count, max 40  (primary signal)
-      //   Interest match  : 10 pts × count, max 35  (secondary signal)
-      //   Exact state     : 20 pts bonus             (prefer state-specific over All-India)
-      //   Gender vacancy  : 10 pts bonus
-      //   Edu stream      : 10 pts bonus
-      //   Age match       : 12 pts bonus             (user within job age limit)
+      //   Org type match        : 15 pts × count, max 40  (primary signal)
+      //   Interest match        : 10 pts × count, max 35  (secondary signal)
+      //   Exact state           : 20 pts bonus             (prefer state-specific over All-India)
+      //   Age match             : 12 pts bonus             (user within job age limit)
+      //   Specialization        : 12 pts × count, max 24  (branch-specific technical jobs)
+      //   Category vacancy      : 18 pts bonus             (job has vacancies in user's category)
+      //   Selection preference  : 15 pts bonus             (written/PET/interview match)
+      //   Gender vacancy        : 10 pts bonus
+      //   Edu stream            : 10 pts bonus
       {
         $addFields: {
           relevanceScore: {
             $add: [
-              { $min: [{ $multiply: ["$orgMatchCount",      15] }, 40] },
-              { $min: [{ $multiply: ["$interestMatchCount", 10] }, 35] },
-              { $cond: ["$isExactStateMatch", 20, 0] },
-              { $cond: ["$hasGenderVacancy",  10, 0] },
-              { $cond: ["$eduStreamMatch",    10, 0] },
+              { $min: [{ $multiply: ["$orgMatchCount",           15] }, 40] },
+              { $min: [{ $multiply: ["$interestMatchCount",      10] }, 35] },
+              { $cond: ["$isExactStateMatch",   20, 0] },
+              { $cond: ["$hasCategoryVacancy",  18, 0] },
               { $cond: [{ $eq: ["$ageMatch", 1] }, 12, 0] },
+              { $min: [{ $multiply: ["$specializationMatchCount", 12] }, 24] },
+              { $cond: ["$selPrefMatch",        15, 0] },
+              { $cond: ["$hasGenderVacancy",    10, 0] },
+              { $cond: ["$eduStreamMatch",      10, 0] },
             ],
           },
         },
