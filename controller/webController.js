@@ -292,6 +292,108 @@ const addExamCalendar = async (req, res) => {
 };
 
 
+// Eligibility Checker — no auth required
+// POST /web/api/eligibility-check
+const eligibilityCheckController = async (req, res) => {
+  try {
+    const {
+      educationLevel,
+      dob,
+      category = "gen",
+      location = "",
+    } = req.body;
+
+    if (!educationLevel) {
+      return res.status(400).json({ error: "educationLevel is required" });
+    }
+
+    const educationRank = { "10th": 1, "12th": 2, diploma: 3, graduate: 4, postgraduate: 5 };
+    const userMaxEduRank = educationRank[educationLevel.toLowerCase()] || 0;
+    const eligibleEduLevels = Object.keys(educationRank).filter(
+      (k) => educationRank[k] <= userMaxEduRank
+    );
+
+    const categoryRelaxation = ["sc", "st"].includes((category || "").toLowerCase())
+      ? 5
+      : (category || "").toLowerCase() === "obc"
+      ? 3
+      : 0;
+
+    const today = new Date();
+    const userAge = dob
+      ? Math.floor((today - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000))
+      : null;
+
+    const andConditions = [
+      {
+        $or: [
+          { "importantDates.applyEnd": { $gte: today } },
+          { "importantDates.applyEnd": { $exists: false } },
+          { "importantDates.applyEnd": null },
+        ],
+      },
+    ];
+
+    // Education cascade: 12th pass → eligible for 10th + 12th jobs
+    if (eligibleEduLevels.length > 0) {
+      const eduRegex = `^(${eligibleEduLevels.join("|")})$`;
+      andConditions.push({
+        $or: [
+          { "eligibility.education": { $size: 0 } },
+          { "eligibility.education": { $exists: false } },
+          { "eligibility.education": null },
+          { "eligibility.education": { $elemMatch: { level: { $regex: eduRegex, $options: "i" } } } },
+        ],
+      });
+    }
+
+    // Location filter
+    const loc = (location || "").toLowerCase().trim();
+    if (loc && loc !== "all india") {
+      andConditions.push({ location: { $regex: `^(all india|${loc})$`, $options: "i" } });
+    }
+
+    // Age filter (with category relaxation)
+    if (userAge !== null) {
+      andConditions.push({
+        $or: [
+          { "ageCriteria.numberBased.min": { $exists: false } },
+          { "ageCriteria.numberBased.max": { $exists: false } },
+          { "ageCriteria.numberBased.min": null },
+          { "ageCriteria.numberBased.max": null },
+          {
+            "ageCriteria.numberBased.min": { $lte: userAge },
+            $expr: {
+              $gte: [
+                { $add: [{ $ifNull: ["$ageCriteria.numberBased.max", 99] }, categoryRelaxation] },
+                userAge,
+              ],
+            },
+          },
+        ],
+      });
+    }
+
+    const filter = { isActive: true, $and: andConditions };
+
+    const [eligible, jobs] = await Promise.all([
+      JobsSchemaDatas.countDocuments(filter),
+      JobsSchemaDatas.find(filter, {
+        _id: 1, title: 1, conductingBody: 1, location: 1, jobDomains: 1,
+        "vacancies.total": 1,
+        "importantDates.applyStart": 1,
+        "importantDates.applyEnd": 1,
+      })
+        .sort({ "importantDates.applyEnd": 1, createdAt: -1 })
+        .limit(30),
+    ]);
+
+    return res.status(200).json({ eligible, data: jobs });
+  } catch (error) {
+    return res.status(500).json({ error: "Eligibility check failed", details: error.message });
+  }
+};
+
 // Search Jobs — suggestions API
 // GET /web/api/search?q=ssc&limit=8
 const searchJobs = async (req, res) => {
@@ -348,4 +450,5 @@ module.exports = {
   getExamCalendar,
   addExamCalendar,
   searchJobs,
+  eligibilityCheckController,
 };
