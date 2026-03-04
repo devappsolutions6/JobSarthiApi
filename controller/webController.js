@@ -20,17 +20,17 @@ const { getCache, setCache } = require("../utils/cache");
 const _getAnnouncement = async (req, res) => {
   try {
     const JobsData = await JobsSchemaDatas.find()
-      .sort({ startDate: -1 })
+      .sort({ createdAt: -1 })
       .limit(4)
       .select("title");
 
     const AdmitCardDataofJobs = await AdmitCardData.find()
-      .sort({ releaseDate: -1 })
+      .sort({ createdAt: -1 })
       .limit(4)
       .select("title");
 
     const ResultDataofJobs = await ResultCardData.find()
-      .sort({ resultDate: -1 })
+      .sort({ createdAt: -1 })
       .limit(4)
       .select("title");
 
