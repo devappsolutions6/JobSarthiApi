@@ -22,7 +22,8 @@ const AdmitCardSchema = new mongoose.Schema({
   description: { type: String },
   releaseDate: { type: Date },
   examDate: { type: Date },
-  category: { type: String }
+  category: { type: String },
+   DownloadLink:{type: String,}
 });
 
 const AdmitCardData = mongoose.model("AdmitCard", AdmitCardSchema);

@@ -19,26 +19,31 @@ const { getCache, setCache } = require("../utils/cache");
 // getAnnouncementData
 const _getAnnouncement = async (req, res) => {
   try {
-    const JobsData = await JobsSchemaDatas.find()
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .select("title");
-
-    const AdmitCardDataofJobs = await AdmitCardData.find()
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .select("title");
-
-    const ResultDataofJobs = await ResultCardData.find()
-      .sort({ createdAt: -1 })
-      .limit(4)
-      .select("title");
-
-    const AllAnnouncementData = [
-      ...JobsData,
-      ...AdmitCardDataofJobs,
-      ...ResultDataofJobs,
-    ];
+    const AllAnnouncementData = await JobsSchemaDatas.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $limit: 4 },
+      { $project: { title: 1, _id: 1 } },
+      {
+        $unionWith: {
+          coll: "admitcards",
+          pipeline: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 4 },
+            { $project: { title: 1, downloadLink: 1, _id: 0 } },
+          ],
+        },
+      },
+      {
+        $unionWith: {
+          coll: "results",
+          pipeline: [
+            { $sort: { createdAt: -1 } },
+            { $limit: 4 },
+            { $project: { title: 1, DownloadLink: 1, _id: 0 } },
+          ],
+        },
+      },
+    ]);
 
     res.status(200).json({
       message: "Announcement Data fetched successfully",
