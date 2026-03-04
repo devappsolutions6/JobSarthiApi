@@ -129,41 +129,54 @@ const JobsSchema = new mongoose.Schema(
       ],
     },
 
-    /* =========================
-       📚 ELIGIBILITY CRITERIA
+  
+ /* =========================
+       📚 New Eligibility ELIGIBILITY CRITERIA
     ========================== */
-   eligibility: {
-  experience: {
-    required: Boolean,
-    details: String
-  },
-
-  // ✅ SIMPLE jobs (SSC, Police, Clerk, etc.)
-  education: [
+eligibility: {
+  posts: [
     {
-      level: String,
-      stream: String,
-      specialization: String,
-      minMarks: Number,
-      required: Boolean
+      postName: String,
+
+      age: {
+        min: Number,
+        max: Number
+      },
+
+      education: [
+        {
+          degree: String,       // B.Tech
+          stream: String,       // Electronics
+          specialization: String,
+          minMarks: Number
+        }
+      ],
+
+      alternativeQualifications: [
+        {
+          degree: String,
+          description: String
+        }
+      ],
+
+      experience: {
+        required: Boolean,
+        minYears: Number,
+        field: String
+      },
+
+      certifications: [
+        String
+      ],
+
+      skills: [
+        String
+      ]
     }
   ],
 
-  additionalQualifications: [String],
-
-  // ✅ COMPLEX jobs (Teaching / Defence / UPSC)
-  rules: [
-    {
-      appliesTo: String, // "Primary Teacher (Class 1–5)"
-      minAge: Number,
-      maxAge: Number,
-
-      requiredTET: [String], // CTET / STET Paper I / II
-
-      qualifications: [
-        String // OR-based human readable rules
-      ]
-    }
+  generalRequirements: [
+    String
   ]
 }
 ,
