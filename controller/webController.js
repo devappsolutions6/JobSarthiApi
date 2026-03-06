@@ -110,20 +110,41 @@ const getJobById = async (req, res) => {
 
 const getHomePageJobs = async (req, res) => {
   try {
-    const JobsData = await JobsSchemaDatas.find(
-      { "importantDates.applyEnd": { $not: { $lt: new Date() } } },
-    { _id: 1, title: 1, JobId: 1, "vacancies.total":1,
-      "importantDates.applyStart": 1,
-      "importantDates.applyEnd":1,
-      "conductingBody":1,
+    const { page = 1, limit = 15, sort = "latest" } = req.query;
 
+    const filter = {
+      "importantDates.applyEnd": { $not: { $lt: new Date() } },
+    };
 
-}
-    ).sort({createdAt:-1});
+    const sortMap = {
+      latest:    { createdAt: -1 },
+      ending:    { "importantDates.applyEnd": 1 },
+      vacancies: { "vacancies.total": -1 },
+    };
+    const sortQuery = sortMap[sort] || { createdAt: -1 };
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [jobs, total] = await Promise.all([
+      JobsSchemaDatas.find(filter, {
+        _id: 1, title: 1, JobId: 1,
+        "vacancies.total": 1,
+        "importantDates.applyStart": 1,
+        "importantDates.applyEnd": 1,
+        conductingBody: 1,
+      }).sort(sortQuery).skip(skip).limit(Number(limit)),
+      JobsSchemaDatas.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / Number(limit));
 
     res.json({
       message: "Successfully fetched the data",
-      data: JobsData,
+      data: jobs,
+      total,
+      page: Number(page),
+      totalPages,
+      hasMore: Number(page) < totalPages,
     });
 
   } catch (error) {
