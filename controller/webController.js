@@ -119,7 +119,7 @@ const getHomePageJobs = async (req, res) => {
 
 
 }
-    );
+    ).sort({createdAt:-1});
 
     res.json({
       message: "Successfully fetched the data",
