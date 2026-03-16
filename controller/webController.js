@@ -235,7 +235,7 @@ const JobCategoryController = async (req, res) => {
     const jobCollection = await JobsSchemaDatas.aggregate([
       {
         $match: {
-          isActive: true,
+          // isActive: true,
           jobDomains: type,
           "importantDates.applyEnd": { $not: { $lt: new Date() } },
         }
