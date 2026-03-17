@@ -401,7 +401,7 @@ const eligibilityCheckController = async (req, res) => {
       });
     }
 
-    const filter = { isActive: true, $and: andConditions };
+    const filter = { $and: andConditions };
 
     const [eligible, jobs] = await Promise.all([
       JobsSchemaDatas.countDocuments(filter),
