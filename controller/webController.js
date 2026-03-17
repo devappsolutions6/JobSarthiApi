@@ -227,32 +227,41 @@ res.clearCookie("token", {
 
 const JobCategoryController = async (req, res) => {
   try {
-    const rawType = req.params.type;
-    const type = rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase();
+    const rawType = (req.params.type || "").trim();
+    if (!rawType) {
+      return res.status(400).json({ error: "Job type is required" });
+    }
 
-     
+    const today = new Date();
 
-  
     const jobCollection = await JobsSchemaDatas.aggregate([
       {
         $match: {
-          // isActive: true,
-          jobDomains: type,
-          "importantDates.applyEnd": { $not: { $lt: new Date() } },
+          // case-insensitive match: "railway", "Railway", "RAILWAY" — sab kaam karenge
+          jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } },
+          $or: [
+            { "importantDates.applyEnd": { $gte: today } },
+            { "importantDates.applyEnd": { $exists: false } },
+            { "importantDates.applyEnd": null },
+          ],
         }
       },
-     {
-      $project:{
-        vacancies:1,
-        importantDates:1,
-        conductingBody:1,
-        title:1
-      }
-     }
+      {
+        $project: {
+          title: 1,
+          conductingBody: 1,
+          location: 1,
+          jobDomains: 1,
+          "vacancies.total": 1,
+          "importantDates.applyStart": 1,
+          "importantDates.applyEnd": 1,
+        }
+      },
+      { $sort: { "importantDates.applyEnd": 1, createdAt: -1 } }
     ]);
 
     return res.status(200).json({
-      jobType: type,
+      jobType: rawType,
       total: jobCollection.length,
       data: jobCollection
     });
@@ -335,10 +344,21 @@ const eligibilityCheckController = async (req, res) => {
     }
 
     const educationRank = { "10th": 1, "12th": 2, diploma: 3, graduate: 4, postgraduate: 5 };
+
+    // Maps user education level to regex patterns matching degree names in DB
+    const eduDegreePatterns = {
+      "10th":        "10th|matriculat|ssc|secondary school",
+      "12th":        "12th|intermediate|hsc|higher secondary|senior secondary",
+      "diploma":     "diploma|iti",
+      "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate",
+      "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate",
+    };
+
     const userMaxEduRank = educationRank[educationLevel.toLowerCase()] || 0;
-    const eligibleEduLevels = Object.keys(educationRank).filter(
-      (k) => educationRank[k] <= userMaxEduRank
-    );
+    const eligiblePatterns = Object.keys(educationRank)
+      .filter((k) => educationRank[k] <= userMaxEduRank)
+      .map((k) => eduDegreePatterns[k])
+      .filter(Boolean);
 
     const categoryRelaxation = ["sc", "st"].includes((category || "").toLowerCase())
       ? 5
@@ -361,15 +381,17 @@ const eligibilityCheckController = async (req, res) => {
       },
     ];
 
-    // Education cascade: 12th pass → eligible for 10th + 12th jobs
-    if (eligibleEduLevels.length > 0) {
-      const eduRegex = `^(${eligibleEduLevels.join("|")})$`;
+    // Education cascade: graduate → eligible for diploma/12th/10th jobs too
+    // DB structure: eligibility.posts[].education[].degree & eligibility.posts[].alternativeQualifications[].degree
+    if (eligiblePatterns.length > 0) {
+      const eduRegex = eligiblePatterns.join("|");
       andConditions.push({
         $or: [
-          { "eligibility.education": { $size: 0 } },
-          { "eligibility.education": { $exists: false } },
-          { "eligibility.education": null },
-          { "eligibility.education": { $elemMatch: { level: { $regex: eduRegex, $options: "i" } } } },
+          { "eligibility.posts": { $exists: false } },
+          { "eligibility.posts": { $size: 0 } },
+          { "eligibility.posts.education.degree": { $exists: false } },  // posts have no education specified → open to all
+          { "eligibility.posts.education.degree": { $regex: eduRegex, $options: "i" } },
+          { "eligibility.posts.alternativeQualifications.degree": { $regex: eduRegex, $options: "i" } },
         ],
       });
     }
