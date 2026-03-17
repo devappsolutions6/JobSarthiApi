@@ -61,7 +61,11 @@ const getJobs = async (req, res) => {
     const today = new Date();
     const filter = {
       isActive: { $ne: false },
-      "importantDates.applyEnd": { $not: { $lt: today } },
+      $or: [
+        { "importantDates.applyEnd": { $gte: today } },
+        { "importantDates.applyEnd": { $exists: false } },
+        { "importantDates.applyEnd": null },
+      ],
     };
     if (search) filter.title = { $regex: search, $options: "i" };
 
@@ -112,8 +116,13 @@ const getHomePageJobs = async (req, res) => {
   try {
     const { page = 1, limit = 15, sort = "latest" } = req.query;
 
+    const today = new Date();
     const filter = {
-      "importantDates.applyEnd": { $not: { $lt: new Date() } },
+      $or: [
+        { "importantDates.applyEnd": { $gte: today } },
+        { "importantDates.applyEnd": { $exists: false } },
+        { "importantDates.applyEnd": null },
+      ],
     };
 
     const sortMap = {
@@ -454,17 +463,29 @@ const searchJobs = async (req, res) => {
 
     const regex = { $regex: query, $options: "i" };
 
+    const today = new Date();
     const jobs = await JobsSchemaDatas.find(
       {
         isActive: { $ne: false },
-        $or: [
-          { title: regex },
-          { department: regex },
-          { conductingBody: regex },
-          { jobDomains: regex },
-          { tags: regex },
-          { searchKeywords: regex },
-          { location: regex },
+        $and: [
+          {
+            $or: [
+              { "importantDates.applyEnd": { $gte: today } },
+              { "importantDates.applyEnd": { $exists: false } },
+              { "importantDates.applyEnd": null },
+            ],
+          },
+          {
+            $or: [
+              { title: regex },
+              { department: regex },
+              { conductingBody: regex },
+              { jobDomains: regex },
+              { tags: regex },
+              { searchKeywords: regex },
+              { location: regex },
+            ],
+          },
         ],
       },
       {

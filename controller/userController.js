@@ -131,6 +131,16 @@ const educationRank = {
   "postgraduate": 5,
 };
 
+// Maps user education level → regex patterns that match DB degree values
+// e.g., user "graduate" matches "Engineering Degree", "B.Tech", "Degree" etc. in DB
+const eduDegreePatterns = {
+  "10th":        "10th|matriculat|ssc|high school|secondary school",
+  "12th":        "12th|intermediate|hsc|higher secondary|senior secondary",
+  "diploma":     "diploma|iti|polytechnic",
+  "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate",
+  "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate",
+};
+
 const recommendJobsController = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -214,20 +224,23 @@ const recommendJobsController = async (req, res) => {
     ];
 
     // Condition B: Education hard filter
-    // Job's required education level must be ≤ user's education (cascade match)
-    // Jobs with NO structured education requirement always pass
+    // DB structure: eligibility.posts[].education[].degree  &
+    //               eligibility.posts[].alternativeQualifications[].degree
+    // User with rank ≥ job's required level → eligible (cascade)
+    // Jobs with NO education specified always pass
     if (eligibleEduLevels.length > 0) {
-      const eduRegex = `^(${eligibleEduLevels.join("|")})$`;
+      const eduRegex = eligibleEduLevels
+        .map((lvl) => eduDegreePatterns[lvl])
+        .filter(Boolean)
+        .join("|");
+
       hardAndConditions.push({
         $or: [
-          { "eligibility.education": { $size: 0 } },          // no requirement stored
-          { "eligibility.education": { $exists: false } },     // field absent
-          { "eligibility.education": null },                   // field null
-          {
-            "eligibility.education": {
-              $elemMatch: { level: { $regex: eduRegex, $options: "i" } },
-            },
-          },
+          { "eligibility.posts": { $exists: false } },
+          { "eligibility.posts": { $size: 0 } },
+          { "eligibility.posts.education.degree": { $exists: false } }, // posts have no education → open to all
+          { "eligibility.posts.education.degree":                   { $regex: eduRegex, $options: "i" } },
+          { "eligibility.posts.alternativeQualifications.degree":   { $regex: eduRegex, $options: "i" } },
         ],
       });
     }
@@ -241,7 +254,8 @@ const recommendJobsController = async (req, res) => {
       hardAndConditions.push({ location: { $regex: locRegex, $options: "i" } });
     }
 
-    const hardMatch = { isActive: true, $and: hardAndConditions };
+    // isActive field does not exist in DB — removed to avoid filtering out all jobs
+    const hardMatch = { $and: hardAndConditions };
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  STAGE 2 — SOFT SCORING (relevance ranking only)
@@ -251,12 +265,29 @@ const recommendJobsController = async (req, res) => {
     const NO_MATCH = ["__no_match__"];
 
     // Stream match expression
+    // DB path: eligibility.posts[].education[].stream  (two levels of nesting)
+    // Use $reduce to flatten all streams across all posts into one array
     const eduStreamMatchExpr = educationStreams.length > 0
       ? {
           $gt: [{
             $size: {
               $setIntersection: [
-                { $map: { input: { $ifNull: ["$eligibility.education", []] }, as: "e", in: { $toLower: { $ifNull: ["$$e.stream", ""] } } } },
+                {
+                  $reduce: {
+                    input: { $ifNull: ["$eligibility.posts", []] },
+                    initialValue: [],
+                    in: {
+                      $concatArrays: [
+                        "$$value",
+                        { $map: {
+                            input: { $ifNull: ["$$this.education", []] },
+                            as: "e",
+                            in: { $toLower: { $ifNull: ["$$e.stream", ""] } },
+                        }},
+                      ],
+                    },
+                  },
+                },
                 educationStreams,
               ],
             },
