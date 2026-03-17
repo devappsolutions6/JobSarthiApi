@@ -60,7 +60,7 @@ const getJobs = async (req, res) => {
     const { page = 1, limit = 20, search } = req.query;
     const today = new Date();
     const filter = {
-      isActive: true,
+      isActive: { $ne: false },
       "importantDates.applyEnd": { $not: { $lt: today } },
     };
     if (search) filter.title = { $regex: search, $options: "i" };
@@ -227,7 +227,8 @@ res.clearCookie("token", {
 
 const JobCategoryController = async (req, res) => {
   try {
-    const type = req.params.type?.toLowerCase();
+    const rawType = req.params.type;
+    const type = rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase();
 
      
 
@@ -433,7 +434,7 @@ const searchJobs = async (req, res) => {
 
     const jobs = await JobsSchemaDatas.find(
       {
-        isActive: true,
+        isActive: { $ne: false },
         $or: [
           { title: regex },
           { department: regex },
