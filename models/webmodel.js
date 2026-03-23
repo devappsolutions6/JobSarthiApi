@@ -72,6 +72,7 @@ const JobsSchema = new mongoose.Schema(
        🔹 BASIC JOB INFORMATION
     ========================== */
     title: { type: String, required: true, index: true }, 
+    urlTitle:{type:String, required:true},
     jobCode: { type: String, unique: true, index: true }, // SSC-GD-2026
     department: { type: String }, // SSC, UPSC, RRB, UPPRPB
     conductingBody: { type: String }, // SSC / UPSC / BPSC
