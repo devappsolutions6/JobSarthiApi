@@ -22,7 +22,7 @@ const _getAnnouncement = async (req, res) => {
     const AllAnnouncementData = await JobsSchemaDatas.aggregate([
       { $sort: { createdAt: -1 } },
       { $limit: 4 },
-      { $project: { title: 1, _id: 1 } }, 
+      { $project: { title: 1, urlTitle: 1, _id: 1 } },
       {
         $unionWith: {
           coll: "admitcards",
@@ -492,6 +492,7 @@ const searchJobs = async (req, res) => {
       {
         _id: 1,
         title: 1,
+        urlTitle: 1,
         department: 1,
         conductingBody: 1,
         jobDomains: 1,

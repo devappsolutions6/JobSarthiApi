@@ -484,7 +484,7 @@ const recommendJobsController = async (req, res) => {
       // ── Project ──────────────────────────────────────────────────────────────
       {
         $project: {
-          _id: 1, title: 1, conductingBody: 1, location: 1, jobDomains: 1,
+          _id: 1, title: 1, urlTitle: 1, conductingBody: 1, location: 1, jobDomains: 1,
           "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd":   1,
@@ -555,7 +555,7 @@ const getBookmarks = async (req, res) => {
     const saved = await SavedJobData.find({ userId })
       .populate(
         "jobId",
-        "title conductingBody department jobDomains location vacancies importantDates isActive updatedAt"
+        "title urlTitle conductingBody department jobDomains location vacancies importantDates isActive updatedAt"
       )
       .sort({ createdAt: -1 });
 
