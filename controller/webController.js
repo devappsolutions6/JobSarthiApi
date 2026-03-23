@@ -137,6 +137,7 @@ const getHomePageJobs = async (req, res) => {
     const [jobs, total] = await Promise.all([
       JobsSchemaDatas.find(filter, {
         _id: 1, title: 1, JobId: 1,
+        urlTitle:1,
         "vacancies.total": 1,
         "importantDates.applyStart": 1,
         "importantDates.applyEnd": 1,
