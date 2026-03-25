@@ -119,8 +119,19 @@ const getHomePageJobs = async (req, res) => {
     const today = new Date();
     const filter = {
       $or: [
-        { "importantDates.applyStart":null},
+        // New schema: applyStart is tentative (not yet started)
+        { "importantDates.applyStart.tentative": true },
+        // Old schema: applyStart was null
+        { "importantDates.applyStart": null },
+
+        // New schema: applyEnd.date >= today
+        { "importantDates.applyEnd.date": { $gte: today } },
+        // New schema: applyEnd is tentative
+        { "importantDates.applyEnd.tentative": true },
+
+        // Old schema: applyEnd was a plain Date >= today
         { "importantDates.applyEnd": { $gte: today } },
+        // Old schema: applyEnd didn't exist or was null
         { "importantDates.applyEnd": { $exists: false } },
         { "importantDates.applyEnd": null },
       ],
@@ -128,7 +139,8 @@ const getHomePageJobs = async (req, res) => {
 
     const sortMap = {
       latest:    { createdAt: -1 },
-      ending:    { "importantDates.applyEnd": 1 },
+      // New schema sorts by .date, old schema sorts by direct value — both work together
+      ending:    { "importantDates.applyEnd.date": 1, "importantDates.applyEnd": 1 },
       vacancies: { "vacancies.total": -1 },
     };
     const sortQuery = sortMap[sort] || { createdAt: -1 };
