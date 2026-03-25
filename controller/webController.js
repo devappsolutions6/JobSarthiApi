@@ -119,6 +119,7 @@ const getHomePageJobs = async (req, res) => {
     const today = new Date();
     const filter = {
       $or: [
+        {"importtantDates.applyStart":null},
         { "importantDates.applyEnd": { $gte: today } },
         { "importantDates.applyEnd": { $exists: false } },
         { "importantDates.applyEnd": null },

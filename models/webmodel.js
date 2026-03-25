@@ -104,32 +104,63 @@ const JobsSchema = new mongoose.Schema(
        🧾 VACANCY DETAILS
     ========================== */
     vacancies: {
-      total: { type: Number },
+  total: { type: Number },
 
-      breakup: [
-        {
-          level: String, // Post / Cadre / Force / Class
-          name: String, // Constable GD / PGT / IMA
-        //  Post-wise total vacancies (if available)
+  breakup: [
+    {
+      // ✅ EXISTING — no change
+      level: String,
+      name: String,
       posts: { type: Number },
 
-          categoryWise: {
-            gen: Number,
-            obc: Number,
-            sc: Number,
-            st: Number,
-            ews: Number,
-            female: Number,
-            other: Number,
-          },
+      // ➕ ADD — post code like "5/26", "Category-1"
+      postCode: { type: String },
 
-          genderWise: {
-            male: Number,
-            female: Number,
-          },
-        },
-      ],
+      // ➕ ADD — agar ek notification me multiple orgs ho
+      organization: { type: String },
+
+      // ➕ ADD — post-wise age (global ageCriteria se alag hoga kabhi kabhi)
+      ageMin: { type: Number },
+      ageMax: { type: Number },
+
+      // ➕ ADD — salary info
+      payScale: {
+        level: { type: String },        // "Level-3"
+        min: { type: Number },          // 21700
+        max: { type: Number },          // 69100
+        currency: { type: String, default: "INR" },
+      },
+
+      // 🔄 MODIFY categoryWise — sebc add karo (Odisha/other states use karte hain)
+      categoryWise: {
+        gen: Number,
+        obc: Number,
+        sc: Number,
+        st: Number,
+        ews: Number,
+        sebc: Number,    // ➕ ADD
+        female: Number,
+        other: Number,
+      },
+
+      // ✅ EXISTING — no change
+      genderWise: {
+        male: Number,
+        female: Number,
+      },
+
+      // ➕ ADD — horizontal reservation (category ke andar reserved seats)
+      horizontalReservation: {
+        women: { type: Number, default: 0 },
+        exSM: { type: Number, default: 0 },   // Ex-Servicemen
+        pwd: { type: Number, default: 0 },
+      },
+
+      // ➕ ADD — jab category-wise data available na ho notification me
+      categoryWiseAvailable: { type: Boolean, default: false },
     },
+  ],
+},
 
   
  /* =========================
@@ -308,18 +339,59 @@ physicalCriteria: {
     ],
 
     /* =========================
-       🗓️ IMPORTANT DATES
+       🗓️ IMPORTANT DATES New Important Date 
     ========================== */
-    importantDates: {
-      applyStart: Date,
-      applyEnd: Date,
-      feeLastDate: Date,
-      correctionWindow: String,
-      examDate: Date,
-      admitCardDate: Date,
-      resultDate: Date,
-    },
+ importantDates: {
 
+  shortNoticeDate: { type: Date },
+  detailedNoticeDate: { type: Date },
+
+  applyStart: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // "March 2026"
+  },
+
+  applyEnd: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // "April 2026"
+  },
+
+  feeLastDate: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // ➕ ADDED
+  },
+
+  correctionWindow: {
+    start: { type: Date },
+    startMonthYear: { type: String }, // ➕ ADDED
+    end: { type: Date },
+    endMonthYear: { type: String },   // ➕ ADDED
+    tentative: { type: Boolean, default: false },
+  },
+
+  examDate: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // ➕ ADDED — "May 2026"
+    note: { type: String },      // "Phase 1 – June 2026"
+  },
+
+  admitCardDate: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // ➕ ADDED
+  },
+
+  resultDate: {
+    date: { type: Date },
+    tentative: { type: Boolean, default: false },
+    monthYear: { type: String }, // ➕ ADDED
+  },
+
+},
     /* =========================
        🔗 LINKS
     ========================== */
