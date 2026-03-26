@@ -23,7 +23,7 @@ const _getAnnouncement = async (req, res) => {
   try {
     const AllAnnouncementData = await JobsSchemaDatas.aggregate([
       { $sort: { createdAt: -1 } },
-      { $limit: 4 },
+      { $limit: 5 },
       { $project: { title: 1, urlTitle: 1, _id: 1 } },
       {
         $unionWith: {
@@ -64,7 +64,23 @@ const getJobs = async (req, res) => {
     const filter = {
       isActive: { $ne: false },
       $or: [
+        // { "importantDates.applyEnd": { $gte: today } },
+        // { "importantDates.applyEnd": { $exists: false } },
+        // { "importantDates.applyEnd": null },
+
+         // New schema: applyStart is tentative (not yet started)
+        { "importantDates.applyStart.tentative": true },
+        // Old schema: applyStart was null
+        { "importantDates.applyStart": null },
+
+        // New schema: applyEnd.date >= today
+        { "importantDates.applyEnd.date": { $gte: today } },
+        // New schema: applyEnd is tentative
+        { "importantDates.applyEnd.tentative": true },
+
+        // Old schema: applyEnd was a plain Date >= today
         { "importantDates.applyEnd": { $gte: today } },
+        // Old schema: applyEnd didn't exist or was null
         { "importantDates.applyEnd": { $exists: false } },
         { "importantDates.applyEnd": null },
       ],
