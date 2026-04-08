@@ -261,9 +261,24 @@ const JobCategoryController = async (req, res) => {
           // case-insensitive match: "railway", "Railway", "RAILWAY" — sab kaam karenge
           jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } },
           $or: [
-            { "importantDates.applyEnd": { $gte: today } },
-            { "importantDates.applyEnd": { $exists: false } },
-            { "importantDates.applyEnd": null },
+            // { "importantDates.applyEnd": { $gte: today } },
+            // { "importantDates.applyEnd": { $exists: false } },
+            // { "importantDates.applyEnd": null },
+
+              { "importantDates.applyStart.tentative": true },
+        // Old schema: applyStart was null
+        { "importantDates.applyStart": null },
+
+        // New schema: applyEnd.date >= today
+        { "importantDates.applyEnd.date": { $gte: today } },
+        // New schema: applyEnd is tentative
+        { "importantDates.applyEnd.tentative": true },
+
+        // Old schema: applyEnd was a plain Date >= today
+        { "importantDates.applyEnd": { $gte: today } },
+        // Old schema: applyEnd didn't exist or was null
+        { "importantDates.applyEnd": { $exists: false } },
+        { "importantDates.applyEnd": null },
           ],
         }
       },
