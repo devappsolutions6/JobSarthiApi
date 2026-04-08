@@ -23,28 +23,8 @@ const _getAnnouncement = async (req, res) => {
   try {
     const AllAnnouncementData = await JobsSchemaDatas.aggregate([
       { $sort: { createdAt: -1 } },
-      { $limit: 5 },
+      { $limit: 10 },
       { $project: { title: 1, urlTitle: 1, _id: 1 } },
-      {
-        $unionWith: {
-          coll: "admitcards",
-          pipeline: [
-            { $sort: { createdAt: -1 } },
-            { $limit: 4 },
-            { $project: { title: 1, downloadLink: 1, _id: 0 } },
-          ],
-        },
-      },
-      {
-        $unionWith: {
-          coll: "results",
-          pipeline: [
-            { $sort: { createdAt: -1 } },
-            { $limit: 4 },
-            { $project: { title: 1, DownloadLink: 1, _id: 0 } },
-          ],
-        },
-      },
     ]);
 
     res.status(200).json({
