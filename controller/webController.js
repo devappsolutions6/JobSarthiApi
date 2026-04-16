@@ -152,6 +152,7 @@ const getHomePageJobs = async (req, res) => {
         "vacancies.total": 1,
         "importantDates.applyStart": 1,
         "importantDates.applyEnd": 1,
+        createdAt:1,
         conductingBody: 1,
       }).sort(sortQuery).skip(skip).limit(Number(limit)),
       JobsSchemaDatas.countDocuments(filter),
