@@ -40,18 +40,30 @@ const verifyOtpController = async (req, res) => {
     user.otpExpiry = null;
     await user.save();
 
-    // Generate auth token
-    const authToken = jwt.sign(
+    // Generate JWT tokens (matching login system)
+    const accessToken = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
     );
 
-    res.cookie("token", authToken, {
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET + "_refresh",
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d" }
+    );
+
+    // Save refreshToken to DB
+    user.refreshToken = refreshToken;
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.cookie("token", accessToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/",
+      maxAge: 15 * 60 * 1000, // 15 mins
     });
 
     res.status(200).json({
@@ -59,12 +71,13 @@ const verifyOtpController = async (req, res) => {
       message: "Email verified successfully!",
       data: {
         user: {
-          _id: user._id,
+          id: user._id,
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
+          token: accessToken,
+          refreshToken: refreshToken,
         },
-        token: authToken,
       },
     });
   } catch (error) {
