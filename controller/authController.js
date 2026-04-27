@@ -158,27 +158,34 @@ const userLoginController = async (req, res) => {
         .json({ status: "error", message: "Invalid email or password" });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
+    // Generate JWT tokens
+    const accessToken = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
     );
 
-    // Update lastLogin
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET + "_refresh",
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d" }
+    );
+
+    // Update refreshToken and lastLogin in DB
     try {
+      user.refreshToken = refreshToken;
       user.lastLogin = new Date();
       await user.save();
     } catch (e) {
-      console.warn("Could not update lastLogin:", e.message);
+      console.warn("Could not update user session data:", e.message);
     }
 
-    res.cookie("token", token, {
+    res.cookie("token", accessToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "none",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000, // 15 mins
     });
 
     return res.status(200).json({
@@ -190,7 +197,8 @@ const userLoginController = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          token
+          token: accessToken,
+          refreshToken: refreshToken
         },
       },
     });
@@ -204,7 +212,71 @@ const userLoginController = async (req, res) => {
 };
 
 
+// Refresh Token Controller
+const refreshTokenController = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ status: "error", message: "Refresh token is required" });
+    }
+
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET + "_refresh");
+    } catch (err) {
+      return res.status(401).json({ status: "error", message: "Invalid or expired refresh token" });
+    }
+
+    // Check if user exists and token matches
+    const user = await UserSignupSchemaDatas.findById(decoded.userId);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ status: "error", message: "Invalid refresh token session" });
+    }
+
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+    );
+
+    // Optional: Rotate refresh token
+    const newRefreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET + "_refresh",
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d" }
+    );
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    res.cookie("token", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        token: newAccessToken,
+        refreshToken: newRefreshToken
+      }
+    });
+
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    return res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+};
+
+
 module.exports = {
     userLoginController,
-    userSignupController
+    userSignupController,
+    refreshTokenController
 }

@@ -57,7 +57,21 @@ const UserSignupSchema = new mongoose.Schema({
   otpExpiry: { type: Date },
   resetOtp: { type: String },
   resetOtpExpiry: { type: Date },
-});
+  refreshToken: { type: String },
+ 
+  education: {
+    levels: { type: [String], default: [] },
+    stream: { type: [String], default: [] },
+    specialization: { type: [String], default: [] },
+  },
+  preferredLocations: { type: [String], default: ["All India"] },
+  category: { type: String, lowercase: true },
+  gender: { type: String, default: "any", lowercase: true },
+  organizationTypes: { type: [String], default: [] },
+  interests: { type: [String], default: [] },
+  dob: { type: Date },
+  selectionPreference: { type: String, enum: ["any", "written", "pet", "interview"], default: "any" },
+}, { timestamps: true });
  
 
 const UserSignupSchemaDatas = mongoose.model("accounts", UserSignupSchema);
