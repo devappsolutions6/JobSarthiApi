@@ -12,7 +12,7 @@ const signupLimiter = rateLimit({
 // Login rate limiter: tighter window, more attempts allowed
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 40, // limit each IP to 10 login requests per window
+    max: 10, // limit each IP to 10 login requests per window
     message: 'Too many login attempts from this IP, please try again after 15 minutes',
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers

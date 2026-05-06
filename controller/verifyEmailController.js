@@ -64,7 +64,6 @@ const verifyOtpController = async (req, res) => {
           lastName: user.lastName,
           email: user.email,
         },
-        token: authToken,
       },
     });
   } catch (error) {
