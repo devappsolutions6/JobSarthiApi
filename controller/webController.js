@@ -135,28 +135,46 @@ const getHomePageJobs = async (req, res) => {
       ],
     };
 
-    const sortMap = {
-      latest:    { createdAt: -1 },
-      // New schema sorts by .date, old schema sorts by direct value — both work together
-      ending:    { "importantDates.applyEnd.date": 1, "importantDates.applyEnd": 1 },
-      vacancies: { "vacancies.total": -1 },
-    };
-    const sortQuery = sortMap[sort] || { createdAt: -1 };
-
     const skip = (Number(page) - 1) * Number(limit);
 
-    const [jobs, total] = await Promise.all([
-      JobsSchemaDatas.find(filter, {
-        _id: 1, title: 1, JobId: 1,
-        urlTitle:1,
-        "vacancies.total": 1,
-        "importantDates.applyStart": 1,
-        "importantDates.applyEnd": 1,
-        createdAt:1,
-        conductingBody: 1,
-      }).sort(sortQuery).skip(skip).limit(Number(limit)),
-      JobsSchemaDatas.countDocuments(filter),
-    ]);
+    const projection = {
+      _id: 1, title: 1, JobId: 1, urlTitle: 1,
+      "vacancies.total": 1,
+      "importantDates.applyStart": 1,
+      "importantDates.applyEnd": 1,
+      createdAt: 1,
+      conductingBody: 1,
+    };
+
+    let jobsPromise;
+    let countFilter = filter;
+
+    if (sort === "ending") {
+      // Only jobs with a real end date — tentative/null excluded
+      countFilter = {
+        $or: [
+          { "importantDates.applyEnd.date": { $gte: today } },             // new schema
+          { "importantDates.applyEnd": { $type: "date", $gte: today } },  // old schema
+        ],
+      };
+      jobsPromise = JobsSchemaDatas.aggregate([
+        { $match: countFilter },
+        { $addFields: { _sortKey: { $ifNull: ["$importantDates.applyEnd.date", "$importantDates.applyEnd"] } } },
+        { $sort: { _sortKey: 1 } },
+        { $skip: skip },
+        { $limit: Number(limit) },
+        { $project: projection },
+      ]);
+    } else {
+      const sortMap = {
+        latest:    { createdAt: -1 },
+        vacancies: { "vacancies.total": -1 },
+      };
+      const sortQuery = sortMap[sort] || { createdAt: -1 };
+      jobsPromise = JobsSchemaDatas.find(filter, projection).sort(sortQuery).skip(skip).limit(Number(limit));
+    }
+
+    const [jobs, total] = await Promise.all([jobsPromise, JobsSchemaDatas.countDocuments(countFilter)]);
 
     const totalPages = Math.ceil(total / Number(limit));
 
