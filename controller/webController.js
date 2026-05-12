@@ -42,7 +42,7 @@ const getJobs = async (req, res) => {
     const { page = 1, limit = 20, search } = req.query;
     const today = new Date();
     const filter = {
-      isActive: { $ne: false },
+      // isActive: { $ne: false },
       $or: [
         // { "importantDates.applyEnd": { $gte: today } },
         // { "importantDates.applyEnd": { $exists: false } },
@@ -523,7 +523,7 @@ const searchJobs = async (req, res) => {
     const today = new Date();
     const jobs = await JobsSchemaDatas.find(
       {
-        isActive: { $ne: false },
+        // isActive: { $ne: false },
         $and: [
           {
             $or: [
