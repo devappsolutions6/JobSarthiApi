@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validateSignupInput } = require("../utils/validation");
 const { sendOtpEmail } = require("../utils/emailService");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
 
@@ -210,6 +212,97 @@ const userLoginController = async (req, res) => {
 };
 
 
+// Google Login Api
+const googleLoginController = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ status: "error", message: "Google credential is required" });
+    }
+
+    // Verify Google token
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, given_name, family_name, picture, sub: googleId } = payload;
+
+    // Find or create user
+    let user = await UserSignupSchemaDatas.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // Create new user if doesn't exist
+      user = new UserSignupSchemaDatas({
+        firstName: given_name,
+        lastName: family_name || "",
+        email: email.toLowerCase(),
+        password: await bcrypt.hash(Math.random().toString(36).slice(-10), 12), // Dummy password
+        isVerified: true, // Google users are pre-verified
+        googleId,
+        avatar: picture,
+        createdAt: new Date(),
+      });
+      await user.save();
+    } else {
+      // If user exists but not verified, mark as verified (since Google email is verified)
+      if (!user.isVerified) {
+        user.isVerified = true;
+      }
+      // Update googleId if not present
+      if (!user.googleId) {
+        user.googleId = googleId;
+      }
+      await user.save();
+    }
+
+    // Generate JWT tokens (Reuse logic from login)
+    const accessToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "15m" }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET + "_refresh",
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d" }
+    );
+
+    user.refreshToken = refreshToken;
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.cookie("token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Google login successful",
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        },
+      },
+    });
+
+  } catch (error) {
+    console.error("Google login error:", error);
+    return res.status(500).json({ status: "error", message: "Google authentication failed" });
+  }
+};
+
+
 // Refresh Token Controller
 const refreshTokenController = async (req, res) => {
   try {
@@ -276,5 +369,6 @@ const refreshTokenController = async (req, res) => {
 module.exports = {
     userLoginController,
     userSignupController,
-    refreshTokenController
+    refreshTokenController,
+    googleLoginController
 }

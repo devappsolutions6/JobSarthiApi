@@ -25,6 +25,7 @@ const {
   userSignupController,
   userLoginController,
   refreshTokenController,
+  googleLoginController,
 } = require("../controller/authController");
 const {
   forgotPasswordController,
@@ -66,6 +67,7 @@ router.post("/userSignup", signupLimiter, userSignupController);
 router.post("/verify-otp", verifyOtpController);
 router.post("/resend-otp", resendOtpController);
 router.post("/login", loginLimiter, userLoginController);
+router.post("/google-login", googleLoginController);
 router.post("/auth/refresh", refreshTokenController);
 router.post("/forgot-password", forgotPasswordLimiter, forgotPasswordController);
 router.post("/verify-reset-otp", verifyResetOtpController);

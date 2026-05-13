@@ -58,6 +58,8 @@ const UserSignupSchema = new mongoose.Schema({
   resetOtp: { type: String },
   resetOtpExpiry: { type: Date },
   refreshToken: { type: String },
+  googleId: { type: String },
+  avatar: { type: String },
  
   education: {
     levels: { type: [String], default: [] },
