@@ -149,7 +149,7 @@ const educationRank = {
 // e.g., user "graduate" matches "Engineering Degree", "B.Tech", "Degree" etc. in DB
 const eduDegreePatterns = {
   "10th":        "10th|matriculat|ssc|high school|secondary school",
-  "12th":        "12th|intermediate|hsc|higher secondary|senior secondary",
+  "12th":        "12th|10\\+2|intermediate|hsc|higher secondary|senior secondary",
   "diploma":     "diploma|iti|polytechnic",
   "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate",
   "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate",
@@ -253,10 +253,11 @@ const recommendJobsController = async (req, res) => {
     ];
 
     // Condition B: Education hard filter
-    // DB structure: eligibility.posts[].education[].degree  &
-    //               eligibility.posts[].alternativeQualifications[].degree
-    // User with rank ≥ job's required level → eligible (cascade)
-    // Jobs with NO education specified always pass
+    // Two DB schemas exist:
+    //   New schema: eligibility.posts[].education[].degree  (free-text, e.g. "Bachelor Degree")
+    //   Old schema: eligibility.education[].level           (normalized, e.g. "12th", "graduate")
+    // User with rank ≥ job's required level → eligible (cascade).
+    // Jobs with NO education field in either schema always pass (open to all).
     if (eligibleEduLevels.length > 0) {
       const eduRegex = eligibleEduLevels
         .map((lvl) => eduDegreePatterns[lvl])
@@ -265,11 +266,27 @@ const recommendJobsController = async (req, res) => {
 
       hardAndConditions.push({
         $or: [
-          { "eligibility.posts": { $exists: false } },
+          // ── New schema (eligibility.posts) ──────────────────────────────────
           { "eligibility.posts": { $size: 0 } },
-          { "eligibility.posts.education.degree": { $exists: false } }, // posts have no education → open to all
-          { "eligibility.posts.education.degree":                   { $regex: eduRegex, $options: "i" } },
-          { "eligibility.posts.alternativeQualifications.degree":   { $regex: eduRegex, $options: "i" } },
+          { "eligibility.posts.education.degree": { $exists: false } },
+          { "eligibility.posts.education.degree":                 { $regex: eduRegex, $options: "i" } },
+          { "eligibility.posts.alternativeQualifications.degree": { $regex: eduRegex, $options: "i" } },
+
+          // ── Old schema (eligibility.education) — properly validated ─────────
+          // Must have no posts AND old-schema education matches eligible levels.
+          // Without this, ALL old-schema jobs bypassed the filter unconditionally.
+          {
+            $and: [
+              { "eligibility.posts": { $exists: false } },
+              {
+                $or: [
+                  { "eligibility.education": { $exists: false } },
+                  { "eligibility.education": { $size: 0 } },
+                  { "eligibility.education.level": { $in: eligibleEduLevels } },
+                ],
+              },
+            ],
+          },
         ],
       });
     }
@@ -281,6 +298,42 @@ const recommendJobsController = async (req, res) => {
     if (!wantsAllIndia && stateLocations.length > 0) {
       const locRegex = `^(all india|${stateLocations.join("|")})$`;
       hardAndConditions.push({ location: { $regex: locRegex, $options: "i" } });
+    }
+
+    // Condition D: Organization type hard filter
+    // If user selected specific org types (psu, bank, defence, etc.) ONLY show matching jobs.
+    // Matches against jobDomains, tags, conductingBody, and department.
+    // Deduplicates the array first (user data had ["psu","psu","psu"]).
+    const uniqueOrgTypes = [...new Set(normalizedOrgTypes)];
+    if (uniqueOrgTypes.length > 0) {
+      const orgRegex = uniqueOrgTypes.join("|");
+      hardAndConditions.push({
+        $or: [
+          { jobDomains:     { $regex: orgRegex, $options: "i" } },
+          { tags:           { $regex: orgRegex, $options: "i" } },
+          { conductingBody: { $regex: orgRegex, $options: "i" } },
+          { department:     { $regex: orgRegex, $options: "i" } },
+        ],
+      });
+    }
+
+    // Condition E: Selection preference hard filter
+    // If user prefers a specific selection mode, only show jobs with that mode.
+    if (normalizedSelPref === "written") {
+      hardAndConditions.push({
+        $and: [
+          { "selectionProcess.stage": { $not: { $regex: "pet|physical|medical", $options: "i" } } },
+          { "selectionProcess.stage": { $not: { $regex: "interview", $options: "i" } } },
+        ],
+      });
+    } else if (normalizedSelPref === "pet") {
+      hardAndConditions.push({
+        "selectionProcess.stage": { $regex: "pet|physical|medical", $options: "i" },
+      });
+    } else if (normalizedSelPref === "interview") {
+      hardAndConditions.push({
+        "selectionProcess.stage": { $regex: "interview", $options: "i" },
+      });
     }
 
     // isActive field does not exist in DB — removed to avoid filtering out all jobs
