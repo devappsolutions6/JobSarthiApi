@@ -3,7 +3,6 @@ const {
   AdmitCardData,
   ResultCardData,
   UserSignupSchemaDatas,
-  UserprefrenceData,
   ExamCalendarData,
 } = require("../models/webmodel");
 const bcrypt = require("bcryptjs");
@@ -252,17 +251,32 @@ const getResultCard = async (req, res) => {
 
 //logut controller
 
-const logutController = async (req, res) =>{
-res.clearCookie("token", {
+const logutController = async (req, res) => {
+  try {
+    const token = req.cookies?.token;
+    if (token) {
+      // Decode token to get userId (no need to verify for logout)
+      const decoded = jwt.decode(token);
+      if (decoded && decoded.userId) {
+        // Invalidate the refresh token in the database
+        await UserSignupSchemaDatas.findByIdAndUpdate(decoded.userId, {
+          $unset: { refreshToken: 1 },
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Logout DB cleanup failed:", err.message);
+  }
+
+  res.clearCookie("token", {
     httpOnly: true,
-    secure: true,       // same as login
-    sameSite: "none",   // same as login
-    path: "/"           // same as login
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    path: "/",
   });
 
-
   return res.json({ message: "Logged out successfully" });
-}
+};
 
 
 const JobCategoryController = async (req, res) => {

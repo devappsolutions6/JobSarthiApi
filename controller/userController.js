@@ -1,4 +1,4 @@
-const { UserprefrenceData, JobsSchemaDatas, SavedJobData } = require("../models/webmodel");
+const { UserSignupSchemaDatas, JobsSchemaDatas, SavedJobData } = require("../models/webmodel");
 
 
 
@@ -31,19 +31,25 @@ const profileController = async (req, res) => {
 // Get all data of the specific user
 const GetSaveData = async (req, res) => {
   try {
-    const userId = req.user._id;  
-    console.log("User ID:", userId);
-
-    const userData = await UserprefrenceData.find({userId
-    });
+    const user = req.user;
+    if (!user) return res.status(401).json({ message: "Not authenticated" });
 
     return res.json({
-      message: "User data fetched successfully",
-      data: userData
+      message: "User preferences fetched successfully",
+      data: {
+        education: user.education,
+        preferredLocations: user.preferredLocations,
+        category: user.category,
+        gender: user.gender,
+        organizationTypes: user.organizationTypes,
+        interests: user.interests,
+        dob: user.dob,
+        selectionPreference: user.selectionPreference,
+      }
     });
 
   } catch (err) {
-    return res.json({
+    return res.status(500).json({
       message: err.message || err
     });
   }
@@ -68,7 +74,7 @@ const Savepreferences = async (req, res) => {
       dob,
     } = req.body;
 
-    //  Minimum data check
+    // Minimum data check
     if (
       educationLevels.length === 0 &&
       organizationTypes.length === 0 &&
@@ -81,7 +87,6 @@ const Savepreferences = async (req, res) => {
     }
 
     const preferencePayload = {
-      userId,
       education: {
         levels: educationLevels,
         stream: educationStreams,
@@ -96,16 +101,25 @@ const Savepreferences = async (req, res) => {
       ...(dob ? { dob: new Date(dob) } : {}),
     };
 
-    const savedPreference = await UserprefrenceData.findOneAndUpdate(
-      { userId },
+    const updatedUser = await UserSignupSchemaDatas.findByIdAndUpdate(
+      userId,
       { $set: preferencePayload },
-      { new: true, upsert: true },
+      { new: true }
     );
 
     return res.status(200).json({
       status: "success",
       message: "User preferences saved successfully",
-      data: savedPreference,
+      data: {
+        education: updatedUser.education,
+        preferredLocations: updatedUser.preferredLocations,
+        category: updatedUser.category,
+        gender: updatedUser.gender,
+        organizationTypes: updatedUser.organizationTypes,
+        interests: updatedUser.interests,
+        dob: updatedUser.dob,
+        selectionPreference: updatedUser.selectionPreference,
+      },
     });
 
   } catch (error) {
@@ -143,26 +157,29 @@ const eduDegreePatterns = {
 
 const recommendJobsController = async (req, res) => {
   try {
-    const userId = req.user._id;
-
-    const userPref = await UserprefrenceData.findOne({ userId });
-    if (!userPref) {
-      return res.status(404).json({
-        status: "error",
-        message: "User preferences not found. Please set your preferences first.",
-      });
-    }
-
     const {
-      education = {},
-      preferredLocations = [],
+      education = { levels: [], stream: [], specialization: [] },
+      preferredLocations = ["All India"],
       organizationTypes = [],
       interests = [],
       gender = "any",
-      dob,
+      dob = null,
       category: userCategory = "",
       selectionPreference = "any",
-    } = userPref;
+    } = req.user;
+
+    // Check if user has actually provided any info (beyond defaults)
+    const hasData = education?.levels?.length > 0 || 
+                    interests?.length > 0 || 
+                    organizationTypes?.length > 0;
+
+    if (!hasData) {
+      return res.status(200).json({
+        status: "success",
+        message: "Please set your preferences to get personalized recommendations.",
+        data: [],
+      });
+    }
 
     // ── Normalize inputs ──────────────────────────────────────────────────────
     const educationLevels           = (education.levels        || []).map(l => l.toLowerCase().trim());
