@@ -56,7 +56,7 @@ router.get("/getadmitcards", getAdmitCard);
 router.get("/getresultcards", getResultCard);
 router.get("/announcement", _getAnnouncement);
 router.get("/logout", logutController);
-router.get("/Jobs-category/:type", JobCategoryController);
+router.get("/Jobs-category/:type", JobCategoryController);   
 router.get("/exam-calendar", getExamCalendar);
 router.post("/admin/exam-calendar", addExamCalendar);
 
