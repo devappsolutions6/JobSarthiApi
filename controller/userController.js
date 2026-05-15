@@ -36,7 +36,7 @@ const GetSaveData = async (req, res) => {
 
     return res.json({
       message: "User preferences fetched successfully",
-      data: {
+      data: [{
         education: user.education,
         preferredLocations: user.preferredLocations,
         category: user.category,
@@ -45,7 +45,8 @@ const GetSaveData = async (req, res) => {
         interests: user.interests,
         dob: user.dob,
         selectionPreference: user.selectionPreference,
-      }
+        updatedAt: user.updatedAt,
+      }]
     });
 
   } catch (err) {

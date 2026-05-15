@@ -185,15 +185,17 @@ const userLoginController = async (req, res) => {
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
-      maxAge: 15 * 60 * 1000, // 15 mins
+      maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
     });
 
     return res.status(200).json({
       status: "success",
       message: "Login successful",
       data: {
+        token: accessToken,
+        refreshToken: refreshToken,
         user: {
           id: user._id,
           firstName: user.firstName,
@@ -278,15 +280,17 @@ const googleLoginController = async (req, res) => {
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
-      maxAge: 15 * 60 * 1000,
+      maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
     });
 
     return res.status(200).json({
       status: "success",
       message: "Google login successful",
       data: {
+        token: accessToken,
+        refreshToken: refreshToken,
         user: {
           id: user._id,
           firstName: user.firstName,
@@ -346,16 +350,22 @@ const refreshTokenController = async (req, res) => {
     res.cookie("token", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
-      maxAge: 15 * 60 * 1000,
+      maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
     });
 
     return res.status(200).json({
       status: "success",
       data: {
         token: newAccessToken,
-        refreshToken: newRefreshToken
+        refreshToken: newRefreshToken,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        }
       }
     });
 
