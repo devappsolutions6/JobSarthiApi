@@ -45,7 +45,7 @@ const GetSaveData = async (req, res) => {
         interests: user.interests,
         dob: user.dob,
         selectionPreference: user.selectionPreference,
-        updatedAt: user.updatedAt,
+        updatedAt: user.updatedAt, 
       }]
     });
 
