@@ -71,7 +71,7 @@ router.post("/google-login", googleLoginController);
 router.post("/auth/refresh", refreshTokenController);
 router.post("/forgot-password", forgotPasswordLimiter, forgotPasswordController);
 router.post("/verify-reset-otp", verifyResetOtpController);
-router.post("/reset-password", resetPasswordController);
+router.post("/reset-password", resetPasswordController);    
 
 // ------------------------------
 // Protected Routes (Need Auth)
