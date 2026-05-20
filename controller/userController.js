@@ -175,6 +175,7 @@ const recommendJobsController = async (req, res) => {
       urlTitle: job.slug,
       conductingBody: job.organization || "",
       location: job.location,
+      "vacancies.total": 1,
       importantDates: {
         applyEnd: job.applyEnd,
       },

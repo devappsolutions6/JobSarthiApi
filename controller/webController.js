@@ -276,7 +276,7 @@ const JobCategoryController = async (req, res) => {
           conductingBody: 1,
           location: 1,
           jobDomains: 1,
-          "totalVacancies": 1,
+          "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
         }
