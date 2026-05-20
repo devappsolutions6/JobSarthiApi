@@ -9,7 +9,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validateSignupInput } = require("../utils/validation");
 const { sendVerificationEmail } = require("../utils/emailService");
-const { getCache, setCache } = require("../utils/cache");
+const { getCache, setCache, fetchCached } = require("../utils/cache");
 
 
 
@@ -39,45 +39,25 @@ const _getAnnouncement = async (req, res) => {
 const getJobs = async (req, res) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
-    const today = new Date();
-    const filter = {
-      // isActive: { $ne: false },
-      $or: [
-        // { "importantDates.applyEnd": { $gte: today } },
-        // { "importantDates.applyEnd": { $exists: false } },
-        // { "importantDates.applyEnd": null },
-
-         // New schema: applyStart is tentative (not yet started)
-        { "importantDates.applyStart.tentative": true },
-        // Old schema: applyStart was null
-        { "importantDates.applyStart": null },
-
-        // New schema: applyEnd.date >= today
-        { "importantDates.applyEnd.date": { $gte: today } },
-        // New schema: applyEnd is tentative
-        { "importantDates.applyEnd.tentative": true },
-
-        // Old schema: applyEnd was a plain Date >= today
-        { "importantDates.applyEnd": { $gte: today } },
-        // Old schema: applyEnd didn't exist or was null
-        { "importantDates.applyEnd": { $exists: false } },
-        { "importantDates.applyEnd": null },
-      ],
-    };
-    if (search) filter.title = { $regex: search, $options: "i" };
-
     const cacheKey = `jobs_p${page}_l${limit}_s${search || ""}`;
-    const cached = await getCache(cacheKey);
-    if (cached) return res.json({ message: "All jobs fetched", ...cached, fromCache: true });
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const [jobs, total] = await Promise.all([
-      JobsSchemaDatas.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
-      JobsSchemaDatas.countDocuments(filter),
-    ]);
+    const payload = await fetchCached(
+      cacheKey,
+      async () => {
+        // Highly optimized pre-computed status filter leveraging indices
+        const filter = { status: "active" };
+        if (search) filter.title = { $regex: search, $options: "i" };
 
-    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: jobs };
-    await setCache(cacheKey, payload, 300);
+        const skip = (Number(page) - 1) * Number(limit);
+        const [jobs, total] = await Promise.all([
+          JobsSchemaDatas.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+          JobsSchemaDatas.countDocuments(filter),
+        ]);
+
+        return { total, page: Number(page), totalPages: Math.ceil(total / limit), data: jobs };
+      },
+      300
+    );
 
     res.json({ message: "All jobs fetched", ...payload });
   } catch (error) {
@@ -112,78 +92,70 @@ const getJobById = async (req, res) => {
 const getHomePageJobs = async (req, res) => {
   try {
     const { page = 1, limit = 15, sort = "latest" } = req.query;
+    const cacheKey = `homepage_jobs_p${page}_l${limit}_s${sort}`;
 
-    const today = new Date();
-    const filter = {
-      $or: [
-        // New schema: applyStart is tentative (not yet started)
-        { "importantDates.applyStart.tentative": true },
-        // Old schema: applyStart was null
-        { "importantDates.applyStart": null },
+    const payload = await fetchCached(
+      cacheKey,
+      async () => {
+        const filter = { status: "active" };
+        const skip = (Number(page) - 1) * Number(limit);
 
-        // New schema: applyEnd.date >= today
-        { "importantDates.applyEnd.date": { $gte: today } },
-        // New schema: applyEnd is tentative
-        { "importantDates.applyEnd.tentative": true },
+        const projection = {
+          _id: 1, title: 1, JobId: 1, urlTitle: 1,
+          "vacancies.total": 1,
+          "importantDates.applyStart": 1,
+          "importantDates.applyEnd": 1,
+          createdAt: 1,
+          conductingBody: 1,
+        };
 
-        // Old schema: applyEnd was a plain Date >= today
-        { "importantDates.applyEnd": { $gte: today } },
-        // Old schema: applyEnd didn't exist or was null
-        { "importantDates.applyEnd": { $exists: false } },
-        { "importantDates.applyEnd": null },
-      ],
-    };
+        let jobsPromise;
+        let countFilter = filter;
 
-    const skip = (Number(page) - 1) * Number(limit);
+        if (sort === "ending") {
+          // Ending Soon: Sort ascending by close date — soonest deadlines naturally float to the top
+          countFilter = {
+            status: "active",
+            $or: [
+              { "importantDates.applyEnd.date": { $exists: true, $ne: null } },
+              { "importantDates.applyEnd": { $type: "date" } }
+            ]
+          };
+          jobsPromise = JobsSchemaDatas.aggregate([
+            { $match: countFilter },
+            { $addFields: { _sortKey: { $ifNull: ["$importantDates.applyEnd.date", "$importantDates.applyEnd"] } } },
+            { $sort: { _sortKey: 1 } },
+            { $skip: skip },
+            { $limit: Number(limit) },
+            { $project: projection },
+          ]);
+        } else {
+          // Pure, predictable sorting for each tab
+          const sortMap = {
+            latest:    { createdAt: -1 },
+            vacancies: { "vacancies.total": -1 },
+          };
+          const sortQuery = sortMap[sort] || { createdAt: -1 };
+          jobsPromise = JobsSchemaDatas.find(filter, projection).sort(sortQuery).skip(skip).limit(Number(limit));
+        }
 
-    const projection = {
-      _id: 1, title: 1, JobId: 1, urlTitle: 1,
-      "vacancies.total": 1,
-      "importantDates.applyStart": 1,
-      "importantDates.applyEnd": 1,
-      createdAt: 1,
-      conductingBody: 1,
-    };
+        const [jobs, total] = await Promise.all([jobsPromise, JobsSchemaDatas.countDocuments(countFilter)]);
+        const totalPages = Math.ceil(total / Number(limit));
 
-    let jobsPromise;
-    let countFilter = filter;
-
-    if (sort === "ending") {
-      // Only jobs with a real end date — tentative/null excluded
-      countFilter = {
-        $or: [
-          { "importantDates.applyEnd.date": { $gte: today } },             // new schema
-          { "importantDates.applyEnd": { $type: "date", $gte: today } },  // old schema
-        ],
-      };
-      jobsPromise = JobsSchemaDatas.aggregate([
-        { $match: countFilter },
-        { $addFields: { _sortKey: { $ifNull: ["$importantDates.applyEnd.date", "$importantDates.applyEnd"] } } },
-        { $sort: { _sortKey: 1 } },
-        { $skip: skip },
-        { $limit: Number(limit) },
-        { $project: projection },
-      ]);
-    } else {
-      const sortMap = {
-        latest:    { createdAt: -1 },
-        vacancies: { "vacancies.total": -1 },
-      };
-      const sortQuery = sortMap[sort] || { createdAt: -1 };
-      jobsPromise = JobsSchemaDatas.find(filter, projection).sort(sortQuery).skip(skip).limit(Number(limit));
-    }
-
-    const [jobs, total] = await Promise.all([jobsPromise, JobsSchemaDatas.countDocuments(countFilter)]);
-
-    const totalPages = Math.ceil(total / Number(limit));
+        return {
+          data: jobs,
+          total,
+          page: Number(page),
+          totalPages,
+          hasMore: Number(page) < totalPages,
+        };
+      },
+      300
+    );
 
     res.json({
       message: "Successfully fetched the data",
-      data: jobs,
-      total,
-      page: Number(page),
-      totalPages,
-      hasMore: Number(page) < totalPages,
+      ...payload
     });
 
   } catch (error) {
@@ -198,23 +170,25 @@ const getHomePageJobs = async (req, res) => {
 const getAdmitCard = async (req, res) => {
   try {
     const { page = 1, limit = 20, category, search } = req.query;
-
-    const filter = {};
-    if (category) filter.category = category;
-    if (search) filter.title = { $regex: search, $options: "i" };
-
     const cacheKey = `admitcards_p${page}_l${limit}_c${category || ""}_s${search || ""}`;
-    const cached = await getCache(cacheKey);
-    if (cached) return res.json({ message: "All Admit Card Data", ...cached, fromCache: true });
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const [admitCards, total] = await Promise.all([
-      AdmitCardData.find(filter).sort({ releaseDate: -1 }).skip(skip).limit(Number(limit)),
-      AdmitCardData.countDocuments(filter),
-    ]);
+    const payload = await fetchCached(
+      cacheKey,
+      async () => {
+        const filter = {};
+        if (category) filter.category = category;
+        if (search) filter.title = { $regex: search, $options: "i" };
 
-    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: admitCards };
-    await setCache(cacheKey, payload, 300);
+        const skip = (Number(page) - 1) * Number(limit);
+        const [admitCards, total] = await Promise.all([
+          AdmitCardData.find(filter).sort({ releaseDate: -1 }).skip(skip).limit(Number(limit)),
+          AdmitCardData.countDocuments(filter),
+        ]);
+
+        return { total, page: Number(page), totalPages: Math.ceil(total / limit), data: admitCards };
+      },
+      300
+    );
 
     res.json({ message: "All Admit Card Data", ...payload });
   } catch (err) {
@@ -225,23 +199,25 @@ const getAdmitCard = async (req, res) => {
 const getResultCard = async (req, res) => {
   try {
     const { page = 1, limit = 20, category, search } = req.query;
-
-    const filter = {};
-    if (category) filter.category = category;
-    if (search) filter.title = { $regex: search, $options: "i" };
-
     const cacheKey = `results_p${page}_l${limit}_c${category || ""}_s${search || ""}`;
-    const cached = await getCache(cacheKey);
-    if (cached) return res.json({ message: "All Result Data", ...cached, fromCache: true });
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const [result, total] = await Promise.all([
-      ResultCardData.find(filter).sort({ ReleaseDate: -1 }).skip(skip).limit(Number(limit)),
-      ResultCardData.countDocuments(filter),
-    ]);
+    const payload = await fetchCached(
+      cacheKey,
+      async () => {
+        const filter = {};
+        if (category) filter.category = category;
+        if (search) filter.title = { $regex: search, $options: "i" };
 
-    const payload = { total, page: Number(page), totalPages: Math.ceil(total / limit), data: result };
-    await setCache(cacheKey, payload, 300);
+        const skip = (Number(page) - 1) * Number(limit);
+        const [result, total] = await Promise.all([
+          ResultCardData.find(filter).sort({ releaseDate: -1 }).skip(skip).limit(Number(limit)),
+          ResultCardData.countDocuments(filter),
+        ]);
+
+        return { total, page: Number(page), totalPages: Math.ceil(total / limit), data: result };
+      },
+      300
+    );
 
     res.json({ message: "All Result Data", ...payload });
   } catch (err) {
@@ -286,33 +262,12 @@ const JobCategoryController = async (req, res) => {
       return res.status(400).json({ error: "Job type is required" });
     }
 
-    const today = new Date();
-
     const jobCollection = await JobsSchemaDatas.aggregate([
       {
         $match: {
-          // case-insensitive match: "railway", "Railway", "RAILWAY" — sab kaam karenge
-          jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } },
-          $or: [
-            // { "importantDates.applyEnd": { $gte: today } },
-            // { "importantDates.applyEnd": { $exists: false } },
-            // { "importantDates.applyEnd": null },
-
-              { "importantDates.applyStart.tentative": true },
-        // Old schema: applyStart was null
-        { "importantDates.applyStart": null },
-
-        // New schema: applyEnd.date >= today
-        { "importantDates.applyEnd.date": { $gte: today } },
-        // New schema: applyEnd is tentative
-        { "importantDates.applyEnd.tentative": true },
-
-        // Old schema: applyEnd was a plain Date >= today
-        { "importantDates.applyEnd": { $gte: today } },
-        // Old schema: applyEnd didn't exist or was null
-        { "importantDates.applyEnd": { $exists: false } },
-        { "importantDates.applyEnd": null },
-          ],
+          status: "active",
+          // case-insensitive match: "railway", "Railway", "RAILWAY"
+          jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } }
         }
       },
       {
@@ -321,7 +276,7 @@ const JobCategoryController = async (req, res) => {
           conductingBody: 1,
           location: 1,
           jobDomains: 1,
-          "vacancies.total": 1,
+          "totalVacancies": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
         }
@@ -412,22 +367,7 @@ const eligibilityCheckController = async (req, res) => {
       return res.status(400).json({ error: "educationLevel is required" });
     }
 
-    const educationRank = { "10th": 1, "12th": 2, diploma: 3, graduate: 4, postgraduate: 5 };
-
-    // Maps user education level to regex patterns matching degree names in DB
-    const eduDegreePatterns = {
-      "10th":        "10th|matriculat|ssc|secondary school",
-      "12th":        "12th|intermediate|hsc|higher secondary|senior secondary",
-      "diploma":     "diploma|iti",
-      "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate",
-      "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate",
-    };
-
-    const userMaxEduRank = educationRank[educationLevel.toLowerCase()] || 0;
-    const eligiblePatterns = Object.keys(educationRank)
-      .filter((k) => educationRank[k] <= userMaxEduRank)
-      .map((k) => eduDegreePatterns[k])
-      .filter(Boolean);
+    const { getEligibleLevelCodes } = require("../utils/educationHelper");
 
     const categoryRelaxation = ["sc", "st"].includes((category || "").toLowerCase())
       ? 5
@@ -441,37 +381,19 @@ const eligibilityCheckController = async (req, res) => {
       : null;
 
     const andConditions = [
-      {
-        $or: [
-          { "importantDates.applyStart.tentative": true },
-        // Old schema: applyStart was null
-        { "importantDates.applyStart": null },
-
-        // New schema: applyEnd.date >= today
-        { "importantDates.applyEnd.date": { $gte: today } },
-        // New schema: applyEnd is tentative
-        { "importantDates.applyEnd.tentative": true },
-
-        // Old schema: applyEnd was a plain Date >= today
-        { "importantDates.applyEnd": { $gte: today } },
-        // Old schema: applyEnd didn't exist or was null
-        { "importantDates.applyEnd": { $exists: false } },
-        { "importantDates.applyEnd": null },
-        ],
-      },
+      { status: "active" }
     ];
 
     // Education cascade: graduate → eligible for diploma/12th/10th jobs too
-    // DB structure: eligibility.posts[].education[].degree & eligibility.posts[].alternativeQualifications[].degree
-    if (eligiblePatterns.length > 0) {
-      const eduRegex = eligiblePatterns.join("|");
+    // All DB data is now standardized to EDU_* levelCodes — pure O(1) code lookup only, no regex fallback needed
+    const eligibleCodes = getEligibleLevelCodes(educationLevel);
+    if (eligibleCodes.length > 0) {
       andConditions.push({
         $or: [
           { "eligibility.posts": { $exists: false } },
           { "eligibility.posts": { $size: 0 } },
-          { "eligibility.posts.education.degree": { $exists: false } },  // posts have no education specified → open to all
-          { "eligibility.posts.education.degree": { $regex: eduRegex, $options: "i" } },
-          { "eligibility.posts.alternativeQualifications.degree": { $regex: eduRegex, $options: "i" } },
+          { "eligibility.posts.education.levelCode": { $exists: false } }, // open to all
+          { "eligibility.posts.education.levelCode": { $in: eligibleCodes } }, // High-performance exact match
         ],
       });
     }
@@ -509,7 +431,7 @@ const eligibilityCheckController = async (req, res) => {
       JobsSchemaDatas.countDocuments(filter),
       JobsSchemaDatas.find(filter, {
         _id: 1, title: 1, conductingBody: 1, location: 1, jobDomains: 1,
-        "vacancies.total": 1,
+        "totalVacancies": 1,
         "importantDates.applyStart": 1,
         "importantDates.applyEnd": 1,
       })
@@ -525,6 +447,7 @@ const eligibilityCheckController = async (req, res) => {
 
 // Search Jobs — suggestions API
 // GET /web/api/search?q=ssc&limit=8
+// Highly optimized using MongoDB Full-Text search ($text) indexing instead of 7-field regex scans
 const searchJobs = async (req, res) => {
   try {
     const { q = "", limit = 8 } = req.query;
@@ -532,44 +455,10 @@ const searchJobs = async (req, res) => {
 
     if (!query) return res.json({ message: "Search results", data: [] });
 
-    const regex = { $regex: query, $options: "i" };
-
-    const today = new Date();
     const jobs = await JobsSchemaDatas.find(
       {
-        // isActive: { $ne: false },
-        $and: [
-          {
-            $or: [
-              // New schema: applyStart is tentative (not yet started)
-        { "importantDates.applyStart.tentative": true },
-        // Old schema: applyStart was null
-        { "importantDates.applyStart": null },
-
-        // New schema: applyEnd.date >= today
-        { "importantDates.applyEnd.date": { $gte: today } },
-        // New schema: applyEnd is tentative
-        { "importantDates.applyEnd.tentative": true },
-
-        // Old schema: applyEnd was a plain Date >= today
-        { "importantDates.applyEnd": { $gte: today } },
-        // Old schema: applyEnd didn't exist or was null
-        { "importantDates.applyEnd": { $exists: false } },
-        { "importantDates.applyEnd": null },
-            ],
-          },
-          {
-            $or: [
-              { title: regex },
-              { department: regex },
-              { conductingBody: regex },
-              { jobDomains: regex },
-              { tags: regex },
-              { searchKeywords: regex },
-              { location: regex },
-            ],
-          },
-        ],
+        status: "active",
+        $text: { $search: query }
       },
       {
         _id: 1,
@@ -579,11 +468,12 @@ const searchJobs = async (req, res) => {
         conductingBody: 1,
         jobDomains: 1,
         location: 1,
-        "vacancies.total": 1,
+        "totalVacancies": 1,
         "importantDates.applyEnd": 1,
+        score: { $meta: "textScore" }
       }
     )
-      .sort({ createdAt: -1 })
+      .sort({ score: { $meta: "textScore" } })
       .limit(Math.min(Number(limit), 20));
 
     res.json({ message: "Search results", data: jobs });

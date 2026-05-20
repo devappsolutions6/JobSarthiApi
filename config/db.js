@@ -11,6 +11,21 @@ const connectDb = async () => {
       socketTimeoutMS: 45000,         // close idle sockets after 45s
     });
     console.log(`Database connected: ${conn.connection.host}`);
+
+    // Asynchronously trigger dynamic configs seeding & database optimization
+    const { runSeedingAndMigration } = require("../utils/migration");
+    runSeedingAndMigration().catch((err) => {
+      console.error("⚠️ [Migration] Error during background startup execution:", err);
+    });
+
+    // Start background Job Expiry Scheduler (runs independently of migration.js to survive prod deployment)
+    try {
+      const { startJobExpiryScheduler } = require("../utils/jobScheduler");
+      startJobExpiryScheduler();
+    } catch (schedErr) {
+      console.error("⚠️ [Scheduler] Failed to start background job expiry scheduler:", schedErr.message);
+    }
+
   } catch (err) {
     console.error("Database connection failed:", err.message);
     process.exit(1);
