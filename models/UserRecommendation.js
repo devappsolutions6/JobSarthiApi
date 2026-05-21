@@ -19,6 +19,12 @@ const RecommendationItemSchema = new mongoose.Schema({
   applyEnd: Date,
   salaryMin: Number,
   salaryMax: Number,
+  vacancies: {
+    total: {
+      type: Number,
+      default: 0,
+    }
+  },
   score: {
     type: Number,
     required: true,

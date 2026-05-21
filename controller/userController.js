@@ -48,7 +48,7 @@ const GetSaveData = async (req, res) => {
         interests: user.interests,
         dob: user.dob,
         selectionPreference: user.selectionPreference,
-        updatedAt: user.updatedAt, 
+        updatedAt: user.updatedAt,
       }]
     });
 
@@ -152,13 +152,13 @@ const recommendJobsController = async (req, res) => {
     // Query exactly one overview sheet document for this user (Option A)
     const recSheet = await UserRecommendationData.findOne({ contactId });
     const recommendations = recSheet?.recommendations || [];
-    
+
     if (recommendations.length === 0) {
       // Check if user has actually provided any info (beyond defaults)
       const { education, interests, organizationTypes } = req.user;
-      const hasData = education?.levels?.length > 0 || 
-                      interests?.length > 0 || 
-                      organizationTypes?.length > 0;
+      const hasData = education?.levels?.length > 0 ||
+        interests?.length > 0 ||
+        organizationTypes?.length > 0;
       if (!hasData) {
         return res.status(200).json({
           status: "success",
@@ -175,9 +175,12 @@ const recommendJobsController = async (req, res) => {
       urlTitle: job.slug,
       conductingBody: job.organization || "",
       location: job.location,
-       "vacancies.total": 1,
-          "importantDates.applyStart": 1,
-          "importantDates.applyEnd": 1,
+      importantDates: {
+        applyEnd: job.applyEnd,
+      },
+      vacancies: {
+        total: job.vacancies?.total || 0,
+      },
       relevanceScore: job.score,
     }));
 

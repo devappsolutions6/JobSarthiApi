@@ -245,6 +245,9 @@ class RecommendationService {
         : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null),
       salaryMin: job.salaryRange?.min || null,
       salaryMax: job.salaryRange?.max || null,
+      vacancies: {
+        total: job.vacancies?.total || 0,
+      },
       score: relevanceScore,
       matchedOn: ["education", "location", "interest"].filter((reason) => {
         if (reason === "education" && job.eligibility?.posts?.length > 0) return true;
@@ -292,6 +295,7 @@ class RecommendationService {
           eligibility: job.eligibility,
           importantDates: job.importantDates,
           salaryRange: job.salaryRange,
+          vacancies: job.vacancies,
           relevanceScore: scored.score
         });
       }
@@ -389,6 +393,9 @@ class RecommendationService {
         : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null),
       salaryMin: job.salaryRange?.min || null,
       salaryMax: job.salaryRange?.max || null,
+      vacancies: {
+        total: job.vacancies?.total || 0,
+      },
       score: job.relevanceScore || 0,
       matchedOn: ["education", "location", "interest"].filter((reason) => {
         if (reason === "education" && job.eligibility?.posts?.length > 0) return true;
