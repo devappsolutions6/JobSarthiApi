@@ -145,7 +145,7 @@ const Savepreferences = async (req, res) => {
 };
 
 // Serve personalized recommendations from fast pre-computed cache collection
-const recommendJobsController = async (req, res) => {
+const recommendJobsController = async (req, res) => { 
   try {
     const contactId = req.user.contactId || req.user.email || req.user._id.toString();
 
