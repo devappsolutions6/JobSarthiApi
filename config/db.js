@@ -26,6 +26,14 @@ const connectDb = async () => {
       console.error("⚠️ [Scheduler] Failed to start background job expiry scheduler:", schedErr.message);
     }
 
+    // Start recommendation cron scheduler (incremental push every 30 min, nightly GC, weekly reconciliation)
+    try {
+      const { startRecommendationCron } = require("../utils/recommendationCron");
+      startRecommendationCron();
+    } catch (recCronErr) {
+      console.error("⚠️ [RecCron] Failed to start recommendation cron scheduler:", recCronErr.message);
+    }
+
   } catch (err) {
     console.error("Database connection failed:", err.message);
     process.exit(1);

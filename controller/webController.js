@@ -101,7 +101,7 @@ const getHomePageJobs = async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit);
 
         const projection = {
-          _id: 1, title: 1, JobId: 1, urlTitle: 1,
+          _id: 1, title: 1, jobCode: 1, urlTitle: 1,
           "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
@@ -116,19 +116,12 @@ const getHomePageJobs = async (req, res) => {
           // Ending Soon: Sort ascending by close date — soonest deadlines naturally float to the top
           countFilter = {
             status: "active",
-            $or: [
-              { "importantDates.applyEnd.date": { $exists: true, $ne: null } },
-              { "importantDates.applyEnd": { $type: "date" } }
-            ]
+            "importantDates.applyEnd.date": { $ne: null }
           };
-          jobsPromise = JobsSchemaDatas.aggregate([
-            { $match: countFilter },
-            { $addFields: { _sortKey: { $ifNull: ["$importantDates.applyEnd.date", "$importantDates.applyEnd"] } } },
-            { $sort: { _sortKey: 1 } },
-            { $skip: skip },
-            { $limit: Number(limit) },
-            { $project: projection },
-          ]);
+          jobsPromise = JobsSchemaDatas.find(countFilter, projection)
+            .sort({ "importantDates.applyEnd.date": 1 })
+            .skip(skip)
+            .limit(Number(limit));
         } else {
           // Pure, predictable sorting for each tab
           const sortMap = {
@@ -431,7 +424,7 @@ const eligibilityCheckController = async (req, res) => {
       JobsSchemaDatas.countDocuments(filter),
       JobsSchemaDatas.find(filter, {
         _id: 1, title: 1, conductingBody: 1, location: 1, jobDomains: 1,
-        "totalVacancies": 1,
+        "vacancies.total": 1,
         "importantDates.applyStart": 1,
         "importantDates.applyEnd": 1,
       })
@@ -455,10 +448,21 @@ const searchJobs = async (req, res) => {
 
     if (!query) return res.json({ message: "Search results", data: [] });
 
+    // Escape regex characters to prevent crashes
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    
+    // Match any word starting with the search query (e.g., "rail" matches "Railway" or "Indian Railway")
+    const regex = new RegExp("\\b" + escapedQuery, "i");
+
     const jobs = await JobsSchemaDatas.find(
       {
         status: "active",
-        $text: { $search: query }
+        $or: [
+          { title: regex },
+          { conductingBody: regex },
+          { department: regex },
+          { searchKeywords: regex }
+        ]
       },
       {
         _id: 1,
@@ -468,12 +472,11 @@ const searchJobs = async (req, res) => {
         conductingBody: 1,
         jobDomains: 1,
         location: 1,
-        "totalVacancies": 1,
-        "importantDates.applyEnd": 1,
-        score: { $meta: "textScore" }
+        "vacancies.total": 1,
+        "importantDates.applyEnd": 1
       }
     )
-      .sort({ score: { $meta: "textScore" } })
+      .sort({ createdAt: -1 })
       .limit(Math.min(Number(limit), 20));
 
     res.json({ message: "Search results", data: jobs });

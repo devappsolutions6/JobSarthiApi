@@ -234,5 +234,6 @@
     "source": "Official Gazetted Notification",
     "notes": "Verified against the latest ORSP matrix values."
   },
+  "isRecommendationProcessed": false,
   "schemaVersion": 3
 }

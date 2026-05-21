@@ -478,6 +478,13 @@ JobSchema.index({
   "importantDates.applyEnd.date": 1,
 });
 
+// Compound index for the recommendation cron's dirty-flag query:
+// Job.find({ isRecommendationProcessed: false, isActive: true })
+JobSchema.index({
+  isRecommendationProcessed: 1,
+  isActive: 1,
+});
+
 /* ==========================================================
    🧹 CACHE INVALIDATION HOOKS
    ========================================================== */

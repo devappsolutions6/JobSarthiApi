@@ -241,14 +241,28 @@ async function runIndexCleanup() {
 }
 
 async function runSeedingAndMigration() {
-  console.log("⚡ [Migration] Starting seeding and database optimization...");
+  const CURRENT_MIGRATION_VERSION = 1;
 
   try {
-    // ── 0. CLEANUP REDUNDANT INDEXES ─────────────────────────────────────────
-    await runIndexCleanup();
+    // Check if optimizations and migrations have already completed for this database version
+    const migrationFlag = await ConfigMaster.findOne({ key: "migrationsCompleted" });
+    const completedVersion = migrationFlag?.value?.version || 0;
 
-    // ── 0.5. COPY LEGACY JOBS TO JOBSCHEMAS ──────────────────────────────────
+    // Safety check: if jobschemas collection is completely empty, we MUST run migrations/seeding regardless of the flag to prevent empty production DB
+    const jobsCount = await Job.countDocuments().catch(() => 0);
+
+    if (completedVersion >= CURRENT_MIGRATION_VERSION && jobsCount > 0 && process.env.FORCE_MIGRATIONS !== "true") {
+      console.log(`ℹ️ [Migration] Database optimizations (v${completedVersion}) are already up to date. Skipping startup migrations.`);
+      return;
+    }
+
+    console.log("⚡ [Migration] Starting seeding and database optimization...");
+
     try {
+      // ── 0. CLEANUP REDUNDANT INDEXES ─────────────────────────────────────────
+      await runIndexCleanup();
+
+      // ── 0.5. COPY LEGACY JOBS TO JOBSCHEMAS ──────────────────────────────────
       const collections = await mongoose.connection.db.listCollections().toArray();
       const legacyJobsExists = collections.some(c => c.name === "jobs");
       
@@ -260,11 +274,63 @@ async function runSeedingAndMigration() {
           console.log(`📦 [Migration] Legacy 'jobs' collection found with ${count} records. Syncing to 'jobschemas'...`);
           const legacyDocs = await legacyJobsCol.find({}).toArray();
           
+          // Safety fix: Clean up any already-copied documents in jobschemas that have null/missing urlTitle or jobCode
+          const badDocs = await Job.collection.find({
+            $or: [
+              { urlTitle: { $in: [null, ""] } },
+              { urlTitle: { $exists: false } },
+              { jobCode: { $in: [null, ""] } },
+              { jobCode: { $exists: false } }
+            ]
+          }).toArray();
+
+          if (badDocs.length > 0) {
+            console.log(`🧹 [Migration] Found ${badDocs.length} existing records in 'jobschemas' with invalid or missing urlTitle/jobCode. Repairing...`);
+            for (const badDoc of badDocs) {
+              const update = {};
+              if (!badDoc.jobCode) {
+                update.jobCode = String(badDoc.JobId || `JC-${badDoc._id}`).toUpperCase();
+              }
+              if (!badDoc.urlTitle) {
+                const slug = (badDoc.title || "job")
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s-]/g, "")
+                  .replace(/\s+/g, "-")
+                  .replace(/-+/g, "-")
+                  .trim();
+                const uniqueSuffix = badDoc.JobId || String(badDoc._id).substring(String(badDoc._id).length - 6);
+                update.urlTitle = `${slug}-${uniqueSuffix}`.toLowerCase();
+              }
+              await Job.collection.updateOne({ _id: badDoc._id }, { $set: update });
+            }
+            console.log("🧹 [Migration] Repair of existing job schemas completed.");
+          }
+
           let copiedCount = 0;
           for (const doc of legacyDocs) {
             // Check if already exists in jobschemas (Job model collection)
             const exists = await Job.collection.findOne({ _id: doc._id });
             if (!exists) {
+              // Ensure jobCode is present and unique (unique constraint)
+              if (!doc.jobCode) {
+                doc.jobCode = doc.JobId || `JC-${doc._id}`;
+              }
+              doc.jobCode = String(doc.jobCode).toUpperCase();
+
+              // Ensure urlTitle is present and unique (unique constraint)
+              if (!doc.urlTitle) {
+                const slug = (doc.title || "job")
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s-]/g, "") // remove special chars
+                  .replace(/\s+/g, "-")         // replace spaces with -
+                  .replace(/-+/g, "-")          // deduplicate dashes
+                  .trim();
+                const uniqueSuffix = doc.JobId || String(doc._id).substring(String(doc._id).length - 6);
+                doc.urlTitle = `${slug}-${uniqueSuffix}`.toLowerCase();
+              } else {
+                doc.urlTitle = String(doc.urlTitle).toLowerCase().trim();
+              }
+
               await Job.collection.insertOne(doc);
               copiedCount++;
             }
@@ -371,13 +437,10 @@ async function runSeedingAndMigration() {
       console.log(`🧹 [Migration] Sanitized fields for ${resultCardRes.modifiedCount} ResultCards.`);
     }
 
-    // Pre-calculate recommendation feeds for all users using the optimized schema data
-    try {
-      const RecommendationService = require("../services/recommendationService");
-      await RecommendationService.recomputeAllUsersRecommendations(true);
-    } catch (recompError) {
-      console.error("⚠️ [Migration] Error during background recommendations precompute:", recompError);
-    }
+    // NOTE: Recommendation pre-computation has moved to the cron scheduler (utils/recommendationCron.js).
+    // The incremental push cron runs immediately on startup and every 30 minutes thereafter,
+    // while the weekly full reconciliation cron (Sunday 3 AM) handles drift correction.
+    // This avoids the O(N×M) blocking rebuild that previously ran on every server restart.
     
     // Flush all stale caches (homepage, admit cards, results) so they immediately fetch migrated and optimized data
     try {
@@ -386,6 +449,16 @@ async function runSeedingAndMigration() {
     } catch (cacheError) {
       console.warn("⚠️ [Migration] Failed to flush cache during startup:", cacheError.message);
     }
+
+    // Save migration completion flag to prevent redundant runs on subsequent hot-reloads/restarts
+    await ConfigMaster.findOneAndUpdate(
+      { key: "migrationsCompleted" },
+      {
+        value: { version: CURRENT_MIGRATION_VERSION },
+        description: "Tracks the completed migration version to prevent redundant startup runs."
+      },
+      { upsert: true, new: true }
+    );
 
     console.log("🎉 [Migration] Database optimization completed successfully!");
   } catch (error) {
