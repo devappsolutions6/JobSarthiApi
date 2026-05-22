@@ -263,6 +263,7 @@ const JobCategoryController = async (req, res) => {
           jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } }
         }
       },
+      { $sort: { createdAt: -1 } },
       {
         $project: {
           title: 1,
@@ -272,9 +273,9 @@ const JobCategoryController = async (req, res) => {
           "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
+          createdAt: 1,
         }
-      },
-      { $sort: { "importantDates.applyEnd": 1, createdAt: -1 } }
+      }
     ]);
 
     return res.status(200).json({
