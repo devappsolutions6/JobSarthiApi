@@ -24,14 +24,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS
+const allowedOrigins = [
+  "https://www.aspirantcareer.in",
+  "https://job-sarthiv2-qo97.vercel.app"
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://www.aspirantcareer.in",
-      "https://job-sarthiv2-qo97.vercel.app"
-
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      // Allow any local development port dynamically
+      if (origin.startsWith("http://localhost:") || origin === "http://localhost") {
+        return callback(null, true);
+      }
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   })

@@ -240,7 +240,7 @@ const logutController = async (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "none",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
   });
 
@@ -474,7 +474,8 @@ const searchJobs = async (req, res) => {
         jobDomains: 1,
         location: 1,
         "vacancies.total": 1,
-        "importantDates.applyEnd": 1
+        "importantDates.applyEnd": 1,
+        "importantDates.examDate": 1
       }
     )
       .sort({ createdAt: -1 })
