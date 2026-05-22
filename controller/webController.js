@@ -97,7 +97,16 @@ const getHomePageJobs = async (req, res) => {
     const payload = await fetchCached(
       cacheKey,
       async () => {
-        const filter = { status: "active" };
+        const today = new Date();
+    
+        const filter = {
+          status: "active",
+          $or: [
+            { "importantDates.applyEnd.date": null },
+            { "importantDates.applyEnd.date": { $exists: false } },
+            { "importantDates.applyEnd.date": { $gte: today } }
+          ]
+        };
         const skip = (Number(page) - 1) * Number(limit);
 
         const projection = {
@@ -113,23 +122,47 @@ const getHomePageJobs = async (req, res) => {
         let countFilter = filter;
 
         if (sort === "ending") {
-          // Ending Soon: Sort ascending by close date — soonest deadlines naturally float to the top
+          // Ending Soon: Sort ascending by close date — only future deadlines within the next 10 days
+          const endingSoonThreshold = new Date();
+          endingSoonThreshold.setDate(today.getDate() + 10);
+
           countFilter = {
             status: "active",
-            "importantDates.applyEnd.date": { $ne: null }
+            $or: [
+              {
+                "importantDates.applyEnd.date": {
+                  $gte: today,
+                  $lte: endingSoonThreshold
+                }
+              },
+              {
+                $and: [
+                  { "importantDates.applyEnd": { $type: "date" } },
+                  {
+                    "importantDates.applyEnd": {
+                      $gte: today,
+                      $lte: endingSoonThreshold
+                    }
+                  }
+                ]
+              }
+            ]
           };
           jobsPromise = JobsSchemaDatas.find(countFilter, projection)
-            .sort({ "importantDates.applyEnd.date": 1 })
+            .sort({ "importantDates.applyEnd.date": 1, "importantDates.applyEnd": 1 })
             .skip(skip)
             .limit(Number(limit));
         } else {
-          // Pure, predictable sorting for each tab
+          // Pure, predictable sorting for each tab (Latest & Most Vacancies)
           const sortMap = {
             latest:    { createdAt: -1 },
             vacancies: { "vacancies.total": -1 },
           };
           const sortQuery = sortMap[sort] || { createdAt: -1 };
-          jobsPromise = JobsSchemaDatas.find(filter, projection).sort(sortQuery).skip(skip).limit(Number(limit));
+          jobsPromise = JobsSchemaDatas.find(filter, projection)
+            .sort(sortQuery)
+            .skip(skip)
+            .limit(Number(limit));
         }
 
         const [jobs, total] = await Promise.all([jobsPromise, JobsSchemaDatas.countDocuments(countFilter)]);

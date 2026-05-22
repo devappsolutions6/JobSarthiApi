@@ -241,7 +241,7 @@ async function runIndexCleanup() {
 }
 
 async function runSeedingAndMigration() {
-  const CURRENT_MIGRATION_VERSION = 1;
+  const CURRENT_MIGRATION_VERSION = 2;
 
   try {
     // Check if optimizations and migrations have already completed for this database version
@@ -435,6 +435,37 @@ async function runSeedingAndMigration() {
     );
     if (resultCardRes.modifiedCount > 0) {
       console.log(`🧹 [Migration] Sanitized fields for ${resultCardRes.modifiedCount} ResultCards.`);
+    }
+
+    // ── 6. STRIP ILLEGAL monthYear FIELD FROM importantDates.applyEnd ────────
+    // Caused by manual DB inserts that included a non-schema `monthYear` field.
+    // Converts { date, tentative, monthYear } → { date, tentative, note } per schema.
+    // Idempotent — only touches documents that still have the bad field.
+    const applyEndBadDocs = await Job.collection.find(
+      { "importantDates.applyEnd.monthYear": { $exists: true } },
+      { projection: { jobCode: 1, "importantDates.applyEnd": 1 } }
+    ).toArray();
+
+    if (applyEndBadDocs.length > 0) {
+      console.log(`🧹 [Migration] Found ${applyEndBadDocs.length} jobs with non-schema 'applyEnd.monthYear' field. Fixing...`);
+      for (const doc of applyEndBadDocs) {
+        const ae = doc.importantDates?.applyEnd || {};
+        await Job.collection.updateOne(
+          { _id: doc._id },
+          {
+            $set: {
+              "importantDates.applyEnd": {
+                date: ae.date ?? null,
+                tentative: ae.tentative ?? true,
+                note: ae.monthYear ?? ""
+              }
+            }
+          }
+        );
+      }
+      console.log(`✅ [Migration] Fixed ${applyEndBadDocs.length} applyEnd.monthYear violations.`);
+    } else {
+      console.log("ℹ️ [Migration] No applyEnd.monthYear violations found.");
     }
 
     // NOTE: Recommendation pre-computation has moved to the cron scheduler (utils/recommendationCron.js).
