@@ -218,7 +218,7 @@ const toggleBookmark = async (req, res) => {
   }
 };
 
-// GET /user/bookmark/:jobId  → check if bookmarked
+// GET /user/bookmark/:jobId  → check if bookmarke 
 const checkBookmark = async (req, res) => {
   try {
     const userId = req.user._id;
