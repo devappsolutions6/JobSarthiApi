@@ -1,4 +1,4 @@
-{
+ {
   "jobCode": "OSWC-2026-ASST",
   "urlTitle": "oswc-recruitment-2026-assistant-superintendent-posts",
   "title": "OSWC Recruitment 2026 Apply Online for 30 Assistant Superintendent and Warehouse Assistant Posts",
