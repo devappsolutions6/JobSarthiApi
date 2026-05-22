@@ -357,6 +357,10 @@ async function runSeedingAndMigration() {
       }
     }
 
+    // ── 1.5. NORMALIZE ALL EDUCATION RECORDS TO STANDARD CODES ────────────────
+    // Run this BEFORE loading full Mongoose documents to avoid validation errors for custom enum properties.
+    await runEducationCodeMigration();
+
     // ── 2. PRE-COMPUTE JOB STATUSES & NORMALIZE JOB EDUCATION ───────────────
     const today = new Date();
     const allJobs = await Job.find({});
@@ -409,9 +413,6 @@ async function runSeedingAndMigration() {
       }
     }
     console.log(`✅ [Migration] Pre-computed status & education codes for ${jobsUpdated}/${allJobs.length} jobs.`);
-
-    // ── 3. NORMALIZE ALL EDUCATION RECORDS TO STANDARD CODES ──────────────────
-    await runEducationCodeMigration();
 
     // ── 4. NORMALIZE ALL FREE-FORM TOKENS TO LOWERCASE ────────────────────────
     await runTokenCasingMigration();

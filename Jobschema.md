@@ -1,4 +1,45 @@
- {
+# Job Schema Specification
+
+This document defines the schema structure and the standard allowed codes for job database entries. 
+
+---
+
+## 🎓 Standard Education Level Codes (`levelCode`)
+
+To ensure exact matching in the recommendation engine and prevent server crashes, the `levelCode` field in `eligibility.posts[].education[]` must strictly match one of the following standardized codes. **Do not use custom codes like `EDU_PG` or `EDU_LLB`.**
+
+| Code | Level Description | Examples / Keywords |
+|---|---|---|
+| **`EDU_10TH`** | 10th Pass / Matriculation | SSC, Secondary School, High School |
+| **`EDU_12TH`** | 12th Pass / Intermediate | HSC, Higher Secondary, Senior Secondary |
+| **`EDU_DIPLOMA`** | Diploma / ITI | Polytechnic, ITI, trade certificates |
+| **`EDU_GRAD`** | Graduate (Bachelor's Degree) | B.Tech, B.Sc, B.A, B.Com, LLB, B.Ed, etc. |
+| **`EDU_POSTGRAD`** | Post Graduate (Master's/PhD) | Master's, M.Tech, MBA, M.Sc, M.A, PhD, etc. |
+| **`EDU_ANY`** | Open to All | No educational constraints |
+
+---
+
+## 💼 Standard Job Domains (`jobDomains`)
+
+The `jobDomains` array field should only contain the following standard values:
+* `"Central"`
+* `"State"`
+* `"Defence"`
+* `"Police"`
+* `"Railway"`
+* `"Teaching"`
+* `"Banking"`
+* `"PSU"`
+* `"Medical"`
+* `"Engineering"`
+* `"Other"`
+
+---
+
+## 📝 Example JSON Document
+
+```json
+{
   "jobCode": "OSWC-2026-ASST",
   "urlTitle": "oswc-recruitment-2026-assistant-superintendent-posts",
   "title": "OSWC Recruitment 2026 Apply Online for 30 Assistant Superintendent and Warehouse Assistant Posts",
@@ -37,7 +78,6 @@
     "breakup": [
       {
         "postCode": "ASST_SUP",
-        "level": "Group-C",
         "name": "Assistant Superintendent",
         "organization": "OSWC",
         "posts": 15,
@@ -59,7 +99,6 @@
       },
       {
         "postCode": "WH_ASST",
-        "level": "Group-C",
         "name": "Warehouse Assistant",
         "organization": "OSWC",
         "posts": 15,
@@ -237,3 +276,4 @@
   "isRecommendationProcessed": false,
   "schemaVersion": 3
 }
+```

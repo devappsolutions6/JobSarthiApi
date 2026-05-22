@@ -92,6 +92,11 @@ function normalizeDegreeToLevelCode(degreeStr) {
   if (!degreeStr) return "EDU_ANY";
   const upper = degreeStr.trim().toUpperCase();
   if (EDUCATION_LEVEL_CODES.includes(upper)) return upper;
+
+  // Direct mapping for common custom/legacy invalid codes
+  if (upper === "EDU_PG" || upper === "PG") return "EDU_POSTGRAD";
+  if (upper === "EDU_LLB" || upper === "LLB") return "EDU_GRAD";
+
   const lower = degreeStr.trim().toLowerCase();
   if (new RegExp(DEGREE_PATTERNS.postgraduate, "i").test(lower)) return "EDU_POSTGRAD";
   if (new RegExp(DEGREE_PATTERNS.graduate,    "i").test(lower)) return "EDU_GRAD";
