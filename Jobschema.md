@@ -38,6 +38,10 @@ The `jobDomains` array field should only contain the following standard values:
 
 ## 📝 Example JSON Document
 
+> [!WARNING]
+> **CRITICAL: Date Fields**
+> All date fields (e.g., `importantDates.*.date`, `createdAt`) MUST be stored as proper **MongoDB Date objects**, not raw strings. If you are inserting data manually or via a script, ensure they are cast to `Date` (e.g., using `new Date()` in Node.js or `{"$date": "..."}` in MongoDB JSON imports).
+
 ```json
 {
   "jobCode": "OSWC-2026-ASST",
@@ -221,23 +225,23 @@ The `jobDomains` array field should only contain the following standard values:
   ],
   "importantDates": {
     "notificationDate": {
-      "date": "2026-05-10T00:00:00.000Z",
+      "date": { "$date": "2026-05-10T00:00:00.000Z" },
       "tentative": false
     },
     "applyStart": {
-      "date": "2026-05-15T00:00:00.000Z",
+      "date": { "$date": "2026-05-15T00:00:00.000Z" },
       "tentative": false
     },
     "applyEnd": {
-      "date": "2026-06-14T23:59:59.000Z",
+      "date": { "$date": "2026-06-14T23:59:59.000Z" },
       "tentative": false
     },
     "feeLastDate": {
-      "date": "2026-06-15T23:59:59.000Z",
+      "date": { "$date": "2026-06-15T23:59:59.000Z" },
       "tentative": false
     },
     "examDate": {
-      "date": "2026-08-20T00:00:00.000Z",
+      "date": { "$date": "2026-08-20T00:00:00.000Z" },
       "tentative": true,
       "note": "Date is tentative and subject to changes."
     }

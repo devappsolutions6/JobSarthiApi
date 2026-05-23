@@ -88,4 +88,8 @@ const UserPreferenceSchema = new mongoose.Schema(
 );
 
 // Explicit High-Performance Indexes are registered inline on fields (userId, interests, preferredLocations)
+// Compound indexes for high-performance multi-preference filtering
+UserPreferenceSchema.index({ interests: 1, preferredLocations: 1, category: 1 });
+UserPreferenceSchema.index({ "education.levels": 1, preferredLocations: 1, category: 1 });
+
 module.exports = mongoose.model("userpreferences", UserPreferenceSchema);

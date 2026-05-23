@@ -6,30 +6,20 @@
  * ┌──────────────────────┬──────────────────┬────────────────────────────────────────────────┐
  * │ Job                  │ Schedule         │ What it does                                   │
  * ├──────────────────────┼──────────────────┼────────────────────────────────────────────────┤
- * │ Incremental Push     │ Every 30 min     │ Processes new jobs (dirty flag), pushes to     │
+ * │ Incremental Push     │ Every 5 min      │ Processes new jobs (dirty flag), pushes to     │
  * │                      │                  │ affected users only via bulkWrite               │
  * ├──────────────────────┼──────────────────┼────────────────────────────────────────────────┤
- * │ Nightly Full Rebuild │ 2:00 AM daily    │ Expires jobs, purges dead jobIds from caches,  │
+ * │ Full Rebuild         │ Every 4 hours    │ Expires jobs, purges dead jobIds from caches,  │
  * │                      │                  │ full forced rebuild of all user feeds,         │
  * │                      │                  │ flushes homepage cache                         │
  * └──────────────────────┴──────────────────┴────────────────────────────────────────────────┘
  */
 
-const THIRTY_MINUTES_MS = 30 * 60 * 1000;
-
-// ── HELPER: milliseconds until next occurrence of a specific time (HH:MM) ───
-function msUntilNextTime(hour, minute) {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(hour, minute, 0, 0);
-  if (next <= now) {
-    next.setDate(next.getDate() + 1); // roll over to tomorrow if already past
-  }
-  return next - now;
-}
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  JOB 1 — INCREMENTAL PUSH (every 30 minutes)
+//  JOB 1 — INCREMENTAL PUSH (every 5 minutes)
 //  Finds jobs with isRecommendationProcessed=false, scores them against
 //  affected user segments only, pushes via bulkWrite. Fast and lightweight.
 // ══════════════════════════════════════════════════════════════════════════════
@@ -45,25 +35,25 @@ async function runIncrementalRecommendationPush() {
 }
 
 function scheduleIncrementalPush() {
-  console.log(`⏰ [RecCron:Incremental] Next incremental push in 30 minutes.`);
+  console.log(`⏰ [RecCron:Incremental] Next incremental push in 5 minutes.`);
   setTimeout(async () => {
     await runIncrementalRecommendationPush();
     scheduleIncrementalPush(); // reschedule
-  }, THIRTY_MINUTES_MS);
+  }, FIVE_MINUTES_MS);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  JOB 2 — NIGHTLY FULL REBUILD (2:00 AM daily)
+//  JOB 2 — FULL REBUILD (Every 4 hours)
 //  1. Mark expired jobs isActive=false
 //  2. Purge dead jobIds from all user recommendation caches
 //  3. Full forced rebuild — recomputes ALL user feeds from scratch (drift correction)
 //  4. Flush homepage/listing cache
 //
-//  Running a full rebuild nightly (not just weekly) keeps all feeds fresh and
-//  self-correcting without any observable performance cost at current scale.
+//  Running a full rebuild every 4 hours keeps all feeds fresh and self-correcting,
+//  ensuring expired/closed jobs are removed from personalized recommendations promptly.
 // ══════════════════════════════════════════════════════════════════════════════
-async function runNightlyFullRebuild() {
-  console.log("🌙 [RecCron:Nightly] Starting nightly full rebuild...");
+async function runFullRebuild() {
+  console.log("🔄 [RecCron:FullRebuild] Starting full rebuild...");
   try {
     const { Job, UserRecommendation } = require("../models");
     const RecommendationService = require("../services/recommendationService");
@@ -74,7 +64,7 @@ async function runNightlyFullRebuild() {
       { $set: { isActive: false } }
     );
     if (deactivated.modifiedCount > 0) {
-      console.log(`🔒 [RecCron:Nightly] Deactivated ${deactivated.modifiedCount} expired jobs.`);
+      console.log(`🔒 [RecCron:FullRebuild] Deactivated ${deactivated.modifiedCount} expired jobs.`);
     }
 
     // Step 2: Collect all inactive/expired job IDs and purge from caches
@@ -95,41 +85,39 @@ async function runNightlyFullRebuild() {
         { $pull: { recommendations: { jobId: { $in: deadIds } } } }
       );
       console.log(
-        `🗑️  [RecCron:Nightly] Purged ${deadIds.length} dead job refs from ${purgeResult.modifiedCount} user caches.`
+        `🗑️  [RecCron:FullRebuild] Purged ${deadIds.length} dead job refs from ${purgeResult.modifiedCount} user caches.`
       );
     } else {
-      console.log("ℹ️  [RecCron:Nightly] No expired/inactive jobs to purge.");
+      console.log("ℹ️  [RecCron:FullRebuild] No expired/inactive jobs to purge.");
     }
 
     // Step 3: Full forced rebuild — clears all UserRecommendation docs and rebuilds from scratch.
-    // This is the daily reconciliation: corrects any drift, stale entries, or inconsistencies
-    // that accumulated during the day. force=true guarantees a clean slate every night.
-    console.log("🔄 [RecCron:Nightly] Running full recommendation rebuild (force=true)...");
+    // This reconciliation corrects any drift, stale entries, or inconsistencies.
+    // force=true guarantees a clean slate every 4 hours.
+    console.log("🔄 [RecCron:FullRebuild] Running full recommendation rebuild (force=true)...");
     await RecommendationService.recomputeAllUsersRecommendations(true);
 
     // Step 4: Flush homepage/job listing caches so fresh data is served immediately after rebuild
     try {
       const { clearAllCache } = require("./cache");
       await clearAllCache();
-      console.log("🗂️  [RecCron:Nightly] Flushed all listing caches.");
+      console.log("🗂️  [RecCron:FullRebuild] Flushed all listing caches.");
     } catch (cacheErr) {
-      console.warn("⚠️  [RecCron:Nightly] Cache flush failed:", cacheErr.message);
+      console.warn("⚠️  [RecCron:FullRebuild] Cache flush failed:", cacheErr.message);
     }
 
-    console.log("✅ [RecCron:Nightly] Nightly full rebuild complete.");
+    console.log("✅ [RecCron:FullRebuild] Full rebuild complete.");
   } catch (err) {
-    console.error("❌ [RecCron:Nightly] Fatal error during nightly rebuild:", err);
+    console.error("❌ [RecCron:FullRebuild] Fatal error during full rebuild:", err);
   }
 }
 
-function scheduleNightlyRebuild() {
-  const ms = msUntilNextTime(2, 0); // 2:00 AM
-  const minutesAway = Math.round(ms / 60000);
-  console.log(`⏰ [RecCron:Nightly] Full rebuild scheduled for 2:00 AM (in ${minutesAway} minutes).`);
+function scheduleFullRebuild() {
+  console.log(`⏰ [RecCron:FullRebuild] Next full rebuild in 4 hours.`);
   setTimeout(async () => {
-    await runNightlyFullRebuild();
-    scheduleNightlyRebuild(); // reschedule for next day
-  }, ms);
+    await runFullRebuild();
+    scheduleFullRebuild(); // reschedule for next 4-hour cycle
+  }, FOUR_HOURS_MS);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -140,12 +128,13 @@ async function startRecommendationCron() {
 
   try {
     // Run incremental push immediately on startup to catch any jobs added while
-    // the server was down — then schedule recurring 30-min runs.
+    // the server was down — then schedule recurring 5-min runs.
     await runIncrementalRecommendationPush();
     scheduleIncrementalPush();
 
-    // Schedule nightly full rebuild at 2:00 AM every day
-    scheduleNightlyRebuild();
+    // Run full rebuild immediately on startup, then schedule recurring 4-hour runs
+    await runFullRebuild();
+    scheduleFullRebuild();
 
     console.log("✅ [RecCron] All recommendation cron jobs scheduled successfully.");
   } catch (err) {
@@ -156,5 +145,5 @@ async function startRecommendationCron() {
 module.exports = {
   startRecommendationCron,
   runIncrementalRecommendationPush,
-  runNightlyFullRebuild,
+  runFullRebuild,
 };

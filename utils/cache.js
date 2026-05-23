@@ -43,6 +43,11 @@ const setCache = async (key, data, ttlSeconds = 300) => {
 // Solves Thundering Herd / Cache Stampede by checking if there's already a pending fetch for this key
 // If so, all concurrent requests await the SAME promise instead of slamming the database
 const fetchCached = async (key, fetchFn, ttlSeconds = 300) => {
+  // Bypass cache in local development to always serve fresh data
+  if (process.env.NODE_ENV !== "production") {
+    return await fetchFn();
+  }
+
   // A. Quick check on existing cache
   const cached = await getCache(key);
   if (cached !== null) return cached;

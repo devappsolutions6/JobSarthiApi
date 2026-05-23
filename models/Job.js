@@ -485,6 +485,19 @@ JobSchema.index({
   isActive: 1,
 });
 
+// Compound indexes to optimize complex multi-preference checks (like eligibility checks and matching recommendations)
+JobSchema.index({
+  status: 1,
+  jobDomains: 1,
+  location: 1,
+});
+
+JobSchema.index({
+  status: 1,
+  "eligibility.posts.education.levelCode": 1,
+  location: 1,
+});
+
 /* ==========================================================
    🧹 CACHE INVALIDATION HOOKS
    ========================================================== */

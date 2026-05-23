@@ -6,7 +6,7 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const connectDb = async () => {
   try {
     const conn = await mongoose.connect(process.env.DBURL, {
-      maxPoolSize: 10,                // max 10 simultaneous DB connections per worker
+      maxPoolSize: process.env.MONGO_MAX_POOL_SIZE ? parseInt(process.env.MONGO_MAX_POOL_SIZE) : 100, 
       serverSelectionTimeoutMS: 5000, // fail fast if DB is unreachable
       socketTimeoutMS: 45000,         // close idle sockets after 45s
     });

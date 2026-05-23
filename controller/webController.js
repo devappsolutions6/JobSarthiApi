@@ -98,13 +98,15 @@ const getHomePageJobs = async (req, res) => {
       cacheKey,
       async () => {
         const today = new Date();
+        const todayStr = today.toISOString();
     
         const filter = {
-          status: "active",
+          status: sort === "latest" ? { $in: ["active", "upcoming"] } : "active",
           $or: [
             { "importantDates.applyEnd.date": null },
             { "importantDates.applyEnd.date": { $exists: false } },
-            { "importantDates.applyEnd.date": { $gte: today } }
+            { "importantDates.applyEnd.date": { $gte: today } },
+            { "importantDates.applyEnd.date": { $gte: todayStr } }
           ]
         };
         const skip = (Number(page) - 1) * Number(limit);
@@ -125,6 +127,7 @@ const getHomePageJobs = async (req, res) => {
           // Ending Soon: Sort ascending by close date — only future deadlines within the next 10 days
           const endingSoonThreshold = new Date();
           endingSoonThreshold.setDate(today.getDate() + 10);
+          const endingSoonThresholdStr = endingSoonThreshold.toISOString();
 
           countFilter = {
             status: "active",
@@ -133,6 +136,12 @@ const getHomePageJobs = async (req, res) => {
                 "importantDates.applyEnd.date": {
                   $gte: today,
                   $lte: endingSoonThreshold
+                }
+              },
+              {
+                "importantDates.applyEnd.date": {
+                  $gte: todayStr,
+                  $lte: endingSoonThresholdStr
                 }
               },
               {
@@ -336,25 +345,184 @@ const getExamCalendar = async (req, res) => {
     const { month, year, category } = req.query;
 
     const today = new Date();
-    const filter = { isActive: true };
-
+    
+    // 1. Define date filters
+    let fromDate, toDate;
     if (month && year) {
-      // Filter by exact month and year
-      const from = new Date(Number(year), Number(month) - 1, 1);   // 1st of that month
-      const to   = new Date(Number(year), Number(month), 1);        // 1st of next month
-      filter.date = { $gte: from, $lt: to };
+      fromDate = new Date(Number(year), Number(month) - 1, 1);   // 1st of that month
+      toDate   = new Date(Number(year), Number(month), 1);        // 1st of next month
     } else {
-      // Default: upcoming events in next 6 months
-      const sixMonthsLater = new Date(today);
-      sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-      filter.date = { $gte: today, $lte: sixMonthsLater };
+      // Generous range: past 1 month to future 12 months for full coverage
+      fromDate = new Date(today);
+      fromDate.setMonth(fromDate.getMonth() - 1);
+      toDate = new Date(today);
+      toDate.setMonth(toDate.getMonth() + 12);
     }
 
-    if (category) filter.category = category;
+    // 2. Query explicit ExamCalendarData
+    const explicitFilter = { isActive: true };
+    if (fromDate && toDate) {
+      explicitFilter.date = { $gte: fromDate, $lt: toDate };
+    }
+    if (category) {
+      explicitFilter.category = category;
+    }
+    const explicitEvents = await ExamCalendarData.find(explicitFilter);
 
-    const data = await ExamCalendarData.find(filter).sort({ date: 1 });
+    // 3. Query active jobs to synthesize dynamic events
+    // Project only minimal lightweight fields for performance
+    const activeJobs = await JobsSchemaDatas.find(
+      { status: "active" },
+      { title: 1, conductingBody: 1, jobDomains: 1, importantDates: 1, links: 1 }
+    );
 
-    res.status(200).json({ message: "success", data });
+    // Helper to map job domains/conducting body to frontend categories
+    const mapJobToCategory = (job) => {
+      const jTitle = (job.title || "").toUpperCase();
+      const conductingBody = (job.conductingBody || "").toUpperCase();
+      const domains = (job.jobDomains || []).map(d => d.toUpperCase());
+
+      if (conductingBody.includes("SSC") || jTitle.includes("SSC")) return "SSC";
+      if (conductingBody.includes("UPSC") || jTitle.includes("UPSC")) return "UPSC";
+      if (domains.includes("RAILWAY") || conductingBody.includes("RAILWAY") || jTitle.includes("RAILWAY")) return "Railway";
+      if (domains.includes("BANKING") || domains.includes("BANK") || conductingBody.includes("BANK") || jTitle.includes("BANK")) return "Banking";
+      if (domains.includes("DEFENCE") || domains.includes("MILITARY") || conductingBody.includes("DEFENCE") || jTitle.includes("DEFENCE")) return "Defence";
+      if (domains.includes("POLICE") || conductingBody.includes("POLICE") || jTitle.includes("POLICE")) return "Police";
+      if (domains.includes("TEACHING") || conductingBody.includes("TEACH") || jTitle.includes("TEACH")) return "Teaching";
+      if (domains.includes("PSU") || conductingBody.includes("PSU") || jTitle.includes("PSU")) return "PSU";
+      if (domains.includes("MEDICAL") || conductingBody.includes("MEDICAL") || jTitle.includes("MEDICAL")) return "Medical";
+      if (domains.includes("STATE") || jTitle.includes("STATE")) return "State";
+      
+      if (job.jobDomains && job.jobDomains.length > 0) {
+        const d = job.jobDomains[0];
+        return d.charAt(0).toUpperCase() + d.slice(1).toLowerCase();
+      }
+      return "Central";
+    };
+
+    // Helper to map category strings to standard form
+    const normalizeCategory = (cat) => {
+      if (!cat) return "Central";
+      const upper = cat.trim().toUpperCase();
+      if (upper === "SSC") return "SSC";
+      if (upper === "UPSC") return "UPSC";
+      if (upper === "RAILWAY" || upper === "RAILWAYS") return "Railway";
+      if (upper === "BANKING" || upper === "BANK" || upper === "BANKS") return "Banking";
+      if (upper === "DEFENCE" || upper === "MILITARY" || upper === "NAVY" || upper === "ARMY" || upper === "AIRFORCE") return "Defence";
+      if (upper === "POLICE") return "Police";
+      if (upper === "TEACHING" || upper === "TEACHER" || upper === "EDUCATION") return "Teaching";
+      if (upper === "PSU") return "PSU";
+      if (upper === "MEDICAL" || upper === "HEALTH") return "Medical";
+      if (upper === "STATE") return "State";
+      return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+    };
+
+    const synthesizedEvents = [];
+
+    // Synthesize events from active jobs
+    activeJobs.forEach(job => {
+      const dates = job.importantDates || {};
+      const jobCat = mapJobToCategory(job);
+      const link = job.links?.applyOnline || job.links?.officialWebsite || "";
+
+      // Add Apply Start
+      if (dates.applyStart && dates.applyStart.date) {
+        synthesizedEvents.push({
+          _id: `${job._id}_applyStart`,
+          title: `${job.title} - Application Start`,
+          category: jobCat,
+          phase: "application",
+          date: dates.applyStart.date,
+          description: dates.applyStart.note || "Online application process begins.",
+          officialLink: link
+        });
+      }
+
+      // Add Apply End
+      if (dates.applyEnd && dates.applyEnd.date) {
+        synthesizedEvents.push({
+          _id: `${job._id}_applyEnd`,
+          title: `${job.title} - Last Date to Apply`,
+          category: jobCat,
+          phase: "lastDate",
+          date: dates.applyEnd.date,
+          description: dates.applyEnd.note || "Last date to submit online application form.",
+          officialLink: link
+        });
+      }
+
+      // Add Exam Date
+      if (dates.examDate && dates.examDate.date) {
+        synthesizedEvents.push({
+          _id: `${job._id}_examDate`,
+          title: `${job.title} - Written Exam`,
+          category: jobCat,
+          phase: "exam",
+          date: dates.examDate.date,
+          description: dates.examDate.note || "Date of the examination.",
+          officialLink: job.links?.officialWebsite || ""
+        });
+      }
+
+      // Add Admit Card
+      if (dates.admitCardDate && dates.admitCardDate.date) {
+        synthesizedEvents.push({
+          _id: `${job._id}_admitCardDate`,
+          title: `${job.title} - Admit Card Release`,
+          category: jobCat,
+          phase: "admitCard",
+          date: dates.admitCardDate.date,
+          description: dates.admitCardDate.note || "Admit cards available for download.",
+          officialLink: job.links?.admitCard || job.links?.officialWebsite || ""
+        });
+      }
+
+      // Add Result
+      if (dates.resultDate && dates.resultDate.date) {
+        synthesizedEvents.push({
+          _id: `${job._id}_resultDate`,
+          title: `${job.title} - Exam Result`,
+          category: jobCat,
+          phase: "result",
+          date: dates.resultDate.date,
+          description: dates.resultDate.note || "Declaration of examination results.",
+          officialLink: job.links?.result || job.links?.officialWebsite || ""
+        });
+      }
+    });
+
+    // 4. Map explicit events categories to align with frontend as well
+    const normalizedExplicit = explicitEvents.map(ev => ({
+      _id: ev._id,
+      title: ev.title,
+      category: normalizeCategory(ev.category),
+      phase: ev.phase,
+      date: ev.date,
+      description: ev.description || "",
+      officialLink: ev.officialLink || ""
+    }));
+
+    // 5. Merge, filter by range and category, then sort
+    let allEvents = [...normalizedExplicit, ...synthesizedEvents];
+
+    // Filter by date range (synthesized events aren't filtered by the db query)
+    if (fromDate && toDate) {
+      allEvents = allEvents.filter(ev => {
+        const d = new Date(ev.date);
+        return d >= fromDate && d < toDate;
+      });
+    }
+
+    // Filter by category (case-insensitive filter)
+    if (category) {
+      const catUpper = category.trim().toUpperCase();
+      allEvents = allEvents.filter(ev => ev.category.toUpperCase() === catUpper);
+    }
+
+    // Sort by date ascending
+    allEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    res.status(200).json({ message: "success", data: allEvents });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
