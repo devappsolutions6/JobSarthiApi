@@ -57,7 +57,7 @@ Database();
 app.use("/web/api", webroutes);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to JobSarthi API");
+  res.send("Welcome to aspirantcareer.in API");
 });
 
 // Health check endpoint — used by load balancers and monitoring tools

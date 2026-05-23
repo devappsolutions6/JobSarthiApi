@@ -1,4 +1,4 @@
-# JobSarthi API — Architecture Documentation
+# aspirantcareer.in API — Architecture Documentation
 
 > Author: Vishal Kumar
 > Last Updated: March 2026
@@ -31,7 +31,7 @@
 
 ## 1. Project Overview
 
-JobSarthi is a **Government Job Information API** that provides:
+aspirantcareer.in is a **Government Job Information API** that provides:
 - Latest government job listings with full details
 - Admit card releases
 - Exam results
@@ -65,7 +65,7 @@ track government job openings, admit cards, and results in one place.
 ## 3. Folder Structure
 
 ```
-jobsarthiapiv2/
+aspirantcareer-apiv2/
 │
 ├── index.js              # Express app — middleware, routes, server start
 ├── cluster.js            # Node.js cluster — forks one worker per CPU core
@@ -611,7 +611,7 @@ Create a `.env` file in the project root:
 PORT=5000
 
 # MongoDB
-DBURL=mongodb+srv://<user>:<pass>@cluster.mongodb.net/jobsarthi
+DBURL=mongodb+srv://<user>:<pass>@cluster.mongodb.net/aspirantcareer
 
 # JWT
 JWT_SECRET=your_super_secret_key_here
@@ -644,7 +644,7 @@ REDIS_URL=redis://default:password@host:6379
 ```bash
 # 1. Clone the repository
 git clone <repo-url>
-cd jobsarthiapiv2
+cd aspirantcareer-apiv2
 
 # 2. Install dependencies
 npm install

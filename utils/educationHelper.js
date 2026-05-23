@@ -1,7 +1,7 @@
-// 🎓 JobSarthi Centralized Education and Qualification Helper
+// 🎓 AspirantCareer Centralized Education and Qualification Helper
 // This is the absolute single source of truth for ranks, codes, regex patterns, and normalization rules.
 
-// ⚙️ JobSarthi Application Constants
+// ⚙️ AspirantCareer Application Constants
 // Centralized, immutable arrays for application-wide enum validation and configuration.
 
 const JOB_DOMAINS = Object.freeze([
