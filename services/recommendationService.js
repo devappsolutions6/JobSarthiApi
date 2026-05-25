@@ -236,9 +236,12 @@ class RecommendationService {
       slug: job.urlTitle,
       location: job.location,
       organization: job.conductingBody || job.organization || "",
-      applyEnd: job.importantDates?.applyEnd?.date
-        ? new Date(job.importantDates.applyEnd.date)
-        : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null),
+      applyEnd: (() => {
+        const d = job.importantDates?.applyEnd?.date
+          ? new Date(job.importantDates.applyEnd.date)
+          : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null);
+        return d && !isNaN(new Date(d).getTime()) ? new Date(d) : null;
+      })(),
       salaryMin: job.salaryRange?.min || null,
       salaryMax: job.salaryRange?.max || null,
       vacancies: {
@@ -384,9 +387,12 @@ class RecommendationService {
       slug: job.urlTitle,
       location: job.location,
       organization: job.conductingBody || job.organization || "",
-      applyEnd: job.importantDates?.applyEnd?.date
-        ? new Date(job.importantDates.applyEnd.date)
-        : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null),
+      applyEnd: (() => {
+        const d = job.importantDates?.applyEnd?.date
+          ? new Date(job.importantDates.applyEnd.date)
+          : (job.importantDates?.applyEnd instanceof Date ? job.importantDates.applyEnd : null);
+        return d && !isNaN(new Date(d).getTime()) ? new Date(d) : null;
+      })(),
       salaryMin: job.salaryRange?.min || null,
       salaryMax: job.salaryRange?.max || null,
       vacancies: {

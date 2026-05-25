@@ -39,8 +39,14 @@ The `jobDomains` array field should only contain the following standard values:
 ## 📝 Example JSON Document
 
 > [!WARNING]
-> **CRITICAL: Date Fields**
-> All date fields (e.g., `importantDates.*.date`, `createdAt`) MUST be stored as proper **MongoDB Date objects**, not raw strings. If you are inserting data manually or via a script, ensure they are cast to `Date` (e.g., using `new Date()` in Node.js or `{"$date": "..."}` in MongoDB JSON imports).
+> **CRITICAL: Date Fields & Validation**
+> All date fields (e.g., `importantDates.*.date`, `createdAt`) MUST be stored as proper **valid MongoDB Date objects**, not raw strings or `Invalid Date` objects. Passing an `Invalid Date` (which holds a `NaN` value) will trigger a Mongoose `CastError` and crash background services like recommendation engines.
+> * **Verification**: Always ensure date objects are valid in your scripts using `!isNaN(new Date(val).getTime())`.
+> * **Fallbacks**: If a date is unknown or not specified, explicitly set it to `null` instead of raw strings or corrupted values.
+
+> [!IMPORTANT]
+> **CRITICAL: Status Field Must Exist**
+> The `status` field (e.g., `"active"`, `"upcoming"`, `"expired"`) **must be explicitly defined** in the MongoDB document. Do not rely on Mongoose default values when inserting or importing documents directly via raw MongoDB scripts. Because the API filters strictly on `{ status: "active" }` at the database level, documents missing this field will **not** be returned or published.
 
 ```json
 {

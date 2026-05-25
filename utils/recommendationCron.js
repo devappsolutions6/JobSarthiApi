@@ -15,6 +15,8 @@
  * └──────────────────────┴──────────────────┴────────────────────────────────────────────────┘
  */
 
+const mongoose = require("mongoose");
+
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
@@ -67,19 +69,19 @@ async function runFullRebuild() {
       console.log(`🔒 [RecCron:FullRebuild] Deactivated ${deactivated.modifiedCount} expired jobs.`);
     }
 
-    // Step 2: Collect all inactive/expired job IDs and purge from caches
-    const deadJobs = await Job.find(
-      {
-        $or: [
-          { isActive: false },
-          { "importantDates.applyEnd.date": { $lt: new Date() } },
-        ],
-      },
-      { _id: 1 }
-    ).lean();
+    // Step 2: Collect all older/expired/inactive jobs (full documents)
+    const deadJobs = await Job.find({
+      $or: [
+        { isActive: false },
+        { status: "expired" },
+        { "importantDates.applyEnd.date": { $lt: new Date() } },
+      ],
+    }).lean();
 
     if (deadJobs.length > 0) {
       const deadIds = deadJobs.map((j) => j._id);
+
+      // Step 2.1: Purge dead jobIds from all user recommendation caches
       const purgeResult = await UserRecommendation.updateMany(
         {},
         { $pull: { recommendations: { jobId: { $in: deadIds } } } }
@@ -87,8 +89,28 @@ async function runFullRebuild() {
       console.log(
         `🗑️  [RecCron:FullRebuild] Purged ${deadIds.length} dead job refs from ${purgeResult.modifiedCount} user caches.`
       );
+
+      // Step 2.2: Move all older/expired jobs to 'oldjobs' collection
+      console.log(`📦 [RecCron:FullRebuild] Moving ${deadJobs.length} older jobs to 'oldjobs' collection...`);
+      const oldJobsCol = mongoose.connection.db.collection("oldjobs");
+      
+      try {
+        await oldJobsCol.insertMany(deadJobs, { ordered: false });
+        console.log(`  Successfully inserted older jobs into 'oldjobs'.`);
+      } catch (insertErr) {
+        if (insertErr.code === 11000 || (insertErr.writeErrors && insertErr.writeErrors.some(e => e.code === 11000))) {
+          console.log(`  Inserted some jobs. Ignored duplicate keys for already moved jobs.`);
+        } else {
+          console.error("  Error copying to oldjobs:", insertErr.message);
+        }
+      }
+
+      // Step 2.3: Delete from 'jobschemas'
+      const deleteRes = await Job.deleteMany({ _id: { $in: deadIds } });
+      console.log(`  Successfully deleted ${deleteRes.deletedCount} older jobs from 'jobschemas'.`);
+
     } else {
-      console.log("ℹ️  [RecCron:FullRebuild] No expired/inactive jobs to purge.");
+      console.log("ℹ️  [RecCron:FullRebuild] No expired/inactive jobs to move or purge.");
     }
 
     // Step 3: Full forced rebuild — clears all UserRecommendation docs and rebuilds from scratch.

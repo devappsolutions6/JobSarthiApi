@@ -410,7 +410,7 @@ async function runSeedingAndMigration() {
         }
       }
       
-      if (job.status !== calculatedStatus) {
+      if (job.status !== calculatedStatus || !job._doc.status) {
         job.status = calculatedStatus;
         isModified = true;
       }

@@ -83,6 +83,15 @@ const DEGREE_PATTERNS = {
   "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate|mca\\b|m\\.c\\.a\\b|m\\.pharm\\b|m\\.?arch\\b|m\\.?des\\b|md\\b|ms\\b|dnb\\b|dmre\\b",
 };
 
+// Pre-compile regexes for O(1) creation time during normalization
+const DEGREE_REGEXES = {
+  "10th": new RegExp(DEGREE_PATTERNS["10th"], "i"),
+  "12th": new RegExp(DEGREE_PATTERNS["12th"], "i"),
+  "diploma": new RegExp(DEGREE_PATTERNS["diploma"], "i"),
+  "graduate": new RegExp(DEGREE_PATTERNS["graduate"], "i"),
+  "postgraduate": new RegExp(DEGREE_PATTERNS["postgraduate"], "i"),
+};
+
 /**
  * Normalizes any raw degree or job-schema level string to a standard levelCode.
  * After DB migration, this is only needed for parsing freeform job data from scrapers/admins.
@@ -98,13 +107,21 @@ function normalizeDegreeToLevelCode(degreeStr) {
   if (upper === "EDU_LLB" || upper === "LLB") return "EDU_GRAD";
 
   const lower = degreeStr.trim().toLowerCase();
-  if (new RegExp(DEGREE_PATTERNS.postgraduate, "i").test(lower)) return "EDU_POSTGRAD";
-  if (new RegExp(DEGREE_PATTERNS.graduate,    "i").test(lower)) return "EDU_GRAD";
-  if (new RegExp(DEGREE_PATTERNS.diploma,     "i").test(lower)) return "EDU_DIPLOMA";
-  if (new RegExp(DEGREE_PATTERNS["12th"],     "i").test(lower)) return "EDU_12TH";
-  if (new RegExp(DEGREE_PATTERNS["10th"],     "i").test(lower)) return "EDU_10TH";
+  if (DEGREE_REGEXES.postgraduate.test(lower)) return "EDU_POSTGRAD";
+  if (DEGREE_REGEXES.graduate.test(lower)) return "EDU_GRAD";
+  if (DEGREE_REGEXES.diploma.test(lower)) return "EDU_DIPLOMA";
+  if (DEGREE_REGEXES["12th"].test(lower)) return "EDU_12TH";
+  if (DEGREE_REGEXES["10th"].test(lower)) return "EDU_10TH";
   return "EDU_ANY";
 }
+
+const LEGACY_USER_LEVEL_MAP = Object.freeze({
+  "postgraduate": "EDU_POSTGRAD", "master": "EDU_POSTGRAD", "post graduate": "EDU_POSTGRAD",
+  "graduate": "EDU_GRAD", "bachelor": "EDU_GRAD", "degree": "EDU_GRAD", "graduation": "EDU_GRAD",
+  "diploma": "EDU_DIPLOMA", "iti": "EDU_DIPLOMA", "polytechnic": "EDU_DIPLOMA",
+  "12th": "EDU_12TH", "intermediate": "EDU_12TH", "hsc": "EDU_12TH",
+  "10th": "EDU_10TH", "matric": "EDU_10TH", "ssc": "EDU_10TH"
+});
 
 /**
  * Converts any education level string (legacy or standard) to a standard code.
@@ -116,13 +133,20 @@ function normalizeUserLevelToCode(userLevel) {
   const upper = userLevel.trim().toUpperCase();
   if (EDUCATION_LEVEL_CODES.includes(upper)) return upper;
   const lower = userLevel.trim().toLowerCase();
-  if (["postgraduate", "master", "post graduate"].includes(lower)) return "EDU_POSTGRAD";
-  if (["graduate", "bachelor", "degree", "graduation"].includes(lower)) return "EDU_GRAD";
-  if (["diploma", "iti", "polytechnic"].includes(lower)) return "EDU_DIPLOMA";
-  if (["12th", "intermediate", "hsc"].includes(lower)) return "EDU_12TH";
-  if (["10th", "matric", "ssc"].includes(lower)) return "EDU_10TH";
-  return null;
+  return LEGACY_USER_LEVEL_MAP[lower] || null;
 }
+
+/**
+ * Precomputed eligible codes map for O(1) lookup
+ */
+const ELIGIBLE_CODES_MAP = Object.freeze({
+  "EDU_10TH": ["EDU_10TH"],
+  "EDU_12TH": ["EDU_10TH", "EDU_12TH"],
+  "EDU_DIPLOMA": ["EDU_10TH", "EDU_12TH", "EDU_DIPLOMA"],
+  "EDU_GRAD": ["EDU_10TH", "EDU_12TH", "EDU_DIPLOMA", "EDU_GRAD"],
+  "EDU_POSTGRAD": ["EDU_10TH", "EDU_12TH", "EDU_DIPLOMA", "EDU_GRAD", "EDU_POSTGRAD"],
+  "EDU_ANY": [] 
+});
 
 /**
  * Returns all standard EDU_* codes that the user qualifies for (cascade).
@@ -132,16 +156,8 @@ function normalizeUserLevelToCode(userLevel) {
  */
 function getEligibleLevelCodes(userEducationLevel) {
   if (!userEducationLevel) return [];
-  const rank = EDUCATION_RANKS[userEducationLevel] || 0; // Direct lookup — no trim/toUpperCase needed post-migration
-  return [
-    { code: "EDU_10TH",    rank: 1 },
-    { code: "EDU_12TH",    rank: 2 },
-    { code: "EDU_DIPLOMA", rank: 3 },
-    { code: "EDU_GRAD",    rank: 4 },
-    { code: "EDU_POSTGRAD",rank: 5 }
-  ]
-    .filter(item => item.rank <= rank)
-    .map(item => item.code);
+  // Direct O(1) lookup - much faster than runtime array generation and filtering
+  return ELIGIBLE_CODES_MAP[userEducationLevel] || [];
 }
 
 
