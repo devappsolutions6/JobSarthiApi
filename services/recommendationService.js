@@ -86,20 +86,16 @@ class RecommendationService {
 
     // A. Education filter
     let isEduEligible = false;
-    if (!job.eligibility?.posts || job.eligibility.posts.length === 0) {
-      isEduEligible = true; // Open to all
-    } else {
+    if (job.eligibility?.posts && job.eligibility.posts.length > 0) {
       for (const post of job.eligibility.posts) {
-        if (!post.education || post.education.length === 0) {
-          isEduEligible = true;
-          break;
-        }
-        for (const edu of post.education) {
-          // levelCode is always a standard code in DB — direct lookup, no fallback needed
-          const requiredRank = educationRank[edu.levelCode] || 0;
-          if (requiredRank === 0 || userMaxEduRank >= requiredRank) {
-            isEduEligible = true;
-            break;
+        if (post.education && post.education.length > 0) {
+          for (const edu of post.education) {
+            // levelCode is always a standard code in DB — direct lookup, no fallback needed
+            const requiredRank = educationRank[edu.levelCode] || 0;
+            if (requiredRank > 0 && userMaxEduRank >= requiredRank) {
+              isEduEligible = true;
+              break;
+            }
           }
         }
         if (isEduEligible) break;

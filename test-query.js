@@ -8,23 +8,21 @@ mongoose.connect('mongodb+srv://imvksb:Book2231042%40@cluster0.7pbs4.mongodb.net
   const today = new Date();
   const todayStr = today.toISOString();
   
-  const filter = {
-    status: { $in: ['active', 'upcoming'] },
-    $or: [
-      { 'importantDates.applyEnd.date': null },
-      { 'importantDates.applyEnd.date': { $exists: false } },
-      { 'importantDates.applyEnd.date': { $gte: today } },
-      { 'importantDates.applyEnd.date': { $gte: todayStr } }
-    ]
-  };
+  const docs = await collection.find({
+    status: 'active',
+    'eligibility.posts.education.levelCode': 'EDU_ANY'
+  }).toArray();
   
-  const docs = await collection.find(filter).sort({createdAt: -1}).limit(5).toArray();
-  console.log(JSON.stringify(docs.map(d => ({
-    id: d._id,
-    title: d.title,
-    status: d.status,
-    applyEnd: d.importantDates?.applyEnd?.date
-  })), null, 2));
+  const results = docs.map(d => {
+    const anyLevels = d.eligibility?.posts?.flatMap(p => 
+      p.education?.filter(e => e.levelCode === 'EDU_ANY').map(e => e.level)
+    ).filter(Boolean);
+    return {
+      title: d.title,
+      eligibility: d.eligibility
+    };
+  });
+  console.log(JSON.stringify(results, null, 2));
   process.exit(0);
 }).catch(e => {
   console.error(e);

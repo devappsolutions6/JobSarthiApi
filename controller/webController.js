@@ -584,12 +584,7 @@ const eligibilityCheckController = async (req, res) => {
     const eligibleCodes = getEligibleLevelCodes(educationLevel);
     if (eligibleCodes.length > 0) {
       andConditions.push({
-        $or: [
-          { "eligibility.posts": { $exists: false } },
-          { "eligibility.posts": { $size: 0 } },
-          { "eligibility.posts.education.levelCode": { $exists: false } }, // open to all
-          { "eligibility.posts.education.levelCode": { $in: eligibleCodes } }, // High-performance exact match
-        ],
+        "eligibility.posts.education.levelCode": { $in: eligibleCodes },
       });
     }
 

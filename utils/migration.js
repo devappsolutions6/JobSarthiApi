@@ -78,6 +78,32 @@ async function runEducationCodeMigration() {
 
   // 3. JOBS — eligibility.posts[].education[].levelCode
   // Ensure every levelCode on every post is a standard code (fills in missing ones too)
+  
+  // 3.0. RESTORE ORIGINAL ELIGIBILITY FROM LEGACY JOBS COLLECTION
+  // Since 'degree' was missing in Mongoose schema, it got stripped out in earlier runs.
+  // We restore the original degrees from legacy 'jobs' collection before normalizing.
+  try {
+    const legacyCol = mongoose.connection.db.collection("jobs");
+    const count = await legacyCol.countDocuments().catch(() => 0);
+    if (count > 0) {
+      console.log("📦 [EduMigration] Restoring original degree fields from legacy 'jobs' collection...");
+      const legacyDocs = await legacyCol.find({}, { projection: { _id: 1, "eligibility.posts": 1 } }).toArray();
+      let restoredCount = 0;
+      for (const doc of legacyDocs) {
+        if (doc.eligibility?.posts) {
+          const res = await mongoose.connection.db.collection("jobschemas").updateOne(
+            { _id: doc._id },
+            { $set: { "eligibility.posts": doc.eligibility.posts } }
+          );
+          if (res.modifiedCount > 0) restoredCount++;
+        }
+      }
+      console.log(`  ✅ Restored degree fields for ${restoredCount} jobs.`);
+    }
+  } catch (restoreErr) {
+    console.warn("⚠️ [EduMigration] Error restoring legacy eligibility:", restoreErr.message);
+  }
+
   const allJobs = await Job.find({ "eligibility.posts.0": { $exists: true } }).lean();
   let jobEduUpdated = 0;
   for (const job of allJobs) {
@@ -241,9 +267,13 @@ async function runIndexCleanup() {
 }
 
 async function runSeedingAndMigration() {
-  const CURRENT_MIGRATION_VERSION = 2;
+  const CURRENT_MIGRATION_VERSION = 4;
 
   try {
+    // ── 0. NORMALIZE ALL EDUCATION RECORDS TO STANDARD CODES ON EVERY STARTUP ──
+    // Ensures newly scraped or inserted raw degree strings are standardized instantly on restart.
+    await runEducationCodeMigration();
+
     // Check if optimizations and migrations have already completed for this database version
     const migrationFlag = await ConfigMaster.findOne({ key: "migrationsCompleted" });
     const completedVersion = migrationFlag?.value?.version || 0;
@@ -357,9 +387,7 @@ async function runSeedingAndMigration() {
       }
     }
 
-    // ── 1.5. NORMALIZE ALL EDUCATION RECORDS TO STANDARD CODES ────────────────
-    // Run this BEFORE loading full Mongoose documents to avoid validation errors for custom enum properties.
-    await runEducationCodeMigration();
+
 
     // ── 2. PRE-COMPUTE JOB STATUSES & NORMALIZE JOB EDUCATION ───────────────
     const today = new Date();

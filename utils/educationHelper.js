@@ -76,11 +76,11 @@ const EDUCATION_RANKS = Object.freeze({
 });
 
 const DEGREE_PATTERNS = {
-  "10th":        "10th|matriculat|ssc|secondary school|matric|high school",
-  "12th":        "12th|10\\+2|intermediate|hsc|higher secondary|senior secondary",
-  "diploma":     "diploma|iti|polytechnic",
-  "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate",
-  "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate",
+  "10th":        "10th|matriculat|ssc|secondary school|matric|high school|7th|8th|6th|middle school",
+  "12th":        "12th|10\\+2|intermediate|hsc|higher secondary|senior secondary|class 12|class xii",
+  "diploma":     "diploma|iti|polytechnic|gnm|anm|nursing|d\\.el\\.ed|d\\.ed\\b|vocational|mechanic",
+  "graduate":    "degree|b\\.tech|b\\.e\\b|bachelor|b\\.sc|b\\.a\\b|b\\.com|graduation|engineering degree|graduate|ll\\.?b\\b|law degree|mbbs|b\\.?ed\\b|bba\\b|bca\\b|b\\.c\\.a\\b|ca\\b|cma\\b|cs\\b|icwa\\b|b\\.el\\.ed\\b|b\\.pharm\\b|b\\.?arch\\b|b\\.?des\\b|bams\\b|bhms\\b|bpt\\b",
+  "postgraduate":"master|m\\.tech|m\\.e\\b|m\\.sc|m\\.a\\b|m\\.com|post.?graduate|mba|phd|doctorate|mca\\b|m\\.c\\.a\\b|m\\.pharm\\b|m\\.?arch\\b|m\\.?des\\b|md\\b|ms\\b|dnb\\b|dmre\\b",
 };
 
 /**

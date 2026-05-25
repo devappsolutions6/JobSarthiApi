@@ -191,6 +191,7 @@ const JobSchema = new mongoose.Schema(
           education: [
             {
               level: String,
+              degree: String,
               levelCode: {
                 type: String,
                 enum: EDUCATION_LEVEL_CODES,
