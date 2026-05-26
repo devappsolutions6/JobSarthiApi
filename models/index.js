@@ -8,6 +8,9 @@ const ExamCalendar = require("./ExamCalendar");
 const SavedJob = require("./SavedJob");
 const ConfigMaster = require("./ConfigMaster");
 const UserRecommendation = require("./UserRecommendation");
+const NotificationSubscription = require("./NotificationSubscription");
+const Notification = require("./Notification");
+const NotificationCampaign = require("./NotificationCampaign");
 
 module.exports = {
   Announcement,
@@ -20,4 +23,8 @@ module.exports = {
   SavedJob,
   ConfigMaster,
   UserRecommendation,
+  NotificationSubscription,
+  Notification,
+  NotificationCampaign,
 };
+

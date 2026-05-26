@@ -34,6 +34,14 @@ const connectDb = async () => {
       console.error("⚠️ [RecCron] Failed to start recommendation cron scheduler:", recCronErr.message);
     }
 
+    // Start admin campaign broadcast scheduler (30s poll interval)
+    try {
+      const { startCampaignScheduler } = require("../utils/campaignScheduler");
+      startCampaignScheduler();
+    } catch (campSchedErr) {
+      console.error("⚠️ [CampaignScheduler] Failed to start broadcast campaign scheduler:", campSchedErr.message);
+    }
+
   } catch (err) {
     console.error("Database connection failed:", err.message);
     process.exit(1);

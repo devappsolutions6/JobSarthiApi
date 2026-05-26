@@ -41,12 +41,21 @@ const {
   checkBookmark,
   getBookmarks,
 } = require("../controller/userController");
+const {
+  subscribe,
+  unsubscribe,
+  testNotification
+} = require("../controller/notificationController");
 
 const router = express.Router();
 
 // ------------------------------
 // Public Routes (No Auth)
 // ------------------------------
+router.post("/notifications/subscribe", subscribe);
+router.post("/notifications/unsubscribe", unsubscribe);
+router.post("/notifications/test-push", testNotification);
+
 router.get("/search", searchJobs);
 router.post("/eligibility-check", eligibilityCheckController);
 router.get("/getJobs", getJobs);

@@ -10,6 +10,9 @@ const UserprefrenceData = require("./UserPreference");
 const ExamCalendarData = require("./ExamCalendar");
 const SavedJobData = require("./SavedJob");
 const UserRecommendationData = require("./UserRecommendation");
+const NotificationSubscriptionData = require("./NotificationSubscription");
+const NotificationData = require("./Notification");
+const NotificationCampaignData = require("./NotificationCampaign");
 
 module.exports = {
   AnnouncementData,
@@ -21,4 +24,8 @@ module.exports = {
   ExamCalendarData,
   SavedJobData,
   UserRecommendationData,
+  NotificationSubscriptionData,
+  NotificationData,
+  NotificationCampaignData,
 };
+

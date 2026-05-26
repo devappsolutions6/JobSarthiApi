@@ -528,9 +528,56 @@ class RecommendationService {
                 upsert: true
               }
             });
+
+            // Real-time Push Notification dispatch to matching registered user
+            try {
+              const NotificationSubscription = require("../models/NotificationSubscription");
+              const fcmService = require("./fcmService");
+              const { getJobNotificationImage } = require("../utils/categoryImages");
+              
+              const userSubscriptions = await NotificationSubscription.find({ userId: user._id, isActive: true }).lean();
+              const jobImage = getJobNotificationImage(job);
+              
+              for (const sub of userSubscriptions) {
+                await fcmService.sendPushNotification(sub.fcmToken, {
+                  title: "New Job Alert Matching Your Profile! 🔔",
+                  body: `${job.title} has just been announced at ${job.organization || "JobSarthi"}. Tap to see eligibility and apply!`,
+                  icon: "https://www.aspirantcareer.in/icons/icon-192.png",
+                  image: jobImage,
+                  clickAction: `http://localhost:3000/details/${job.slug || job.urlTitle}/${job._id}`,
+                  data: { jobId: job._id.toString() },
+                  userId: user._id
+                });
+              }
+            } catch (pushErr) {
+              console.error(`⚠️ Failed to send push notification to user ${user._id}:`, pushErr.message);
+            }
           }
         }
         
+        // Real-time Push Notification dispatch to all guest/anonymous subscribers
+        try {
+          const NotificationSubscription = require("../models/NotificationSubscription");
+          const fcmService = require("./fcmService");
+          const { getJobNotificationImage } = require("../utils/categoryImages");
+          
+          const guestSubscriptions = await NotificationSubscription.find({ userId: null, isActive: true }).lean();
+          const jobImage = getJobNotificationImage(job);
+          
+          for (const sub of guestSubscriptions) {
+            await fcmService.sendPushNotification(sub.fcmToken, {
+              title: "New Job Announcement! 🔔",
+              body: `${job.title} has just been posted. Tap to check your eligibility now!`,
+              icon: "https://www.aspirantcareer.in/icons/icon-192.png",
+              image: jobImage,
+              clickAction: `http://localhost:3000/details/${job.slug || job.urlTitle}/${job._id}`,
+              data: { jobId: job._id.toString() }
+            });
+          }
+        } catch (guestPushErr) {
+          console.error("⚠️ Failed to send push notifications to guest subscribers:", guestPushErr.message);
+        }
+
         // Execute all pull/push operations in a single database roundtrip!
         if (bulkOps.length > 0) {
           await UserRecommendation.bulkWrite(bulkOps, { ordered: false });
