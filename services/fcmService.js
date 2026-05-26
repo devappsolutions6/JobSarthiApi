@@ -10,7 +10,17 @@ class FCMService {
   init() {
     try {
       const clientEmail = process.env.FCM_CLIENT_EMAIL;
-      const privateKey = process.env.FCM_PRIVATE_KEY ? process.env.FCM_PRIVATE_KEY.replace(/\\n/g, "\n") : null;
+      let privateKey = process.env.FCM_PRIVATE_KEY ? process.env.FCM_PRIVATE_KEY.trim() : null;
+
+      // Clean surrounding quotes added by some hosting environments
+      if (privateKey) {
+        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+          privateKey = privateKey.slice(1, -1);
+        } else if (privateKey.startsWith("'") && privateKey.endsWith("'")) {
+          privateKey = privateKey.slice(1, -1);
+        }
+        privateKey = privateKey.replace(/\\n/g, "\n");
+      }
 
       if (!this.projectId || !clientEmail || !privateKey) {
         console.warn("⚠️ [FCM] Missing Firebase environment variables. Push notifications will be bypassed.");
@@ -52,23 +62,18 @@ class FCMService {
       const payload = {
         message: {
           token: fcmToken,
-          notification: {
-            title,
-            body,
-            ...(image ? { image } : {})
-          },
-          webpush: {
-            notification: {
-              title,
-              body,
-              icon: icon || "/logo.png",
-              click_action: clickAction || "http://localhost:3000",
-              ...(image ? { image } : {})
-            }
-          },
           data: {
-            ...data,
-            ...(image ? { image } : {})
+            title: title || "",
+            body: body || "",
+            icon: icon || "/logo.png",
+            clickAction: clickAction || "https://www.aspirantcareer.in/",
+            ...(image ? { image } : {}),
+            ...Object.keys(data).reduce((acc, k) => {
+              if (data[k] !== undefined && data[k] !== null) {
+                acc[k] = typeof data[k] === "string" ? data[k] : JSON.stringify(data[k]);
+              }
+              return acc;
+            }, {})
           }
         }
       };

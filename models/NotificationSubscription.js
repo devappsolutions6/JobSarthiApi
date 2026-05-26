@@ -4,8 +4,14 @@ const NotificationSubscriptionSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "users",
+      ref: "accounts", // References the user account schema
       default: null, // Allow guest/anonymous subscriptions
+    },
+    email: {
+      type: String,
+      default: null, // User's email (if logged in or supplied)
+      trim: true,
+      lowercase: true,
     },
     fcmToken: {
       type: String,
@@ -16,6 +22,14 @@ const NotificationSubscriptionSchema = new mongoose.Schema(
     deviceType: {
       type: String,
       default: "web",
+    },
+    userAgent: {
+      type: String,
+      default: null,
+    },
+    ipAddress: {
+      type: String,
+      default: null,
     },
     isActive: {
       type: Boolean,

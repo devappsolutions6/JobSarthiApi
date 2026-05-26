@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const subscribe = async (req, res) => {
   try {
-    const { fcmToken, deviceType = "web" } = req.body;
+    const { fcmToken, deviceType = "web", email: guestEmail } = req.body;
     
     // Optional authentication - associate with logged-in user if token is present
     let userId = null;
@@ -22,13 +22,29 @@ const subscribe = async (req, res) => {
       }
     }
 
+    let email = guestEmail || null;
+    if (userId) {
+      try {
+        const { User } = require("../models");
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          email = user.email;
+        }
+      } catch (dbErr) {
+        console.warn("⚠️ Failed to look up user email for subscription:", dbErr.message);
+      }
+    }
+
+    const userAgent = req.headers["user-agent"] || null;
+    const ipAddress = req.headers["x-forwarded-for"] || req.connection?.remoteAddress || req.ip || null;
+
     if (!fcmToken) {
       return res.status(400).json({ error: "fcmToken is required" });
     }
 
     const subscription = await NotificationSubscriptionData.findOneAndUpdate(
       { fcmToken },
-      { userId, deviceType, isActive: true },
+      { userId, email, deviceType, userAgent, ipAddress, isActive: true },
       { upsert: true, new: true }
     );
 

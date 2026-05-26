@@ -19,10 +19,18 @@ async function fixDates() {
             let needsUpdate = false;
             const updateDoc = { $set: {} };
 
-            // Helper to check and convert string dates
+            // Helper to check and convert string or {$date} object dates
             const checkAndConvert = (path, value) => {
+                if (!value) return;
+                let dateStr = null;
                 if (typeof value === 'string') {
-                    const parsed = new Date(value);
+                    dateStr = value;
+                } else if (typeof value === 'object' && value['$date']) {
+                    dateStr = value['$date'];
+                }
+
+                if (dateStr) {
+                    const parsed = new Date(dateStr);
                     if (!isNaN(parsed.getTime())) {
                         updateDoc.$set[path] = parsed;
                         needsUpdate = true;
