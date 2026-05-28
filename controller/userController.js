@@ -248,6 +248,48 @@ const getBookmarks = async (req, res) => {
   }
 };
 
+const getUserSyllabus = async (req, res) => {
+  try {
+    const { UserSyllabusData } = require("../models/webmodel");
+    const userId = req.user._id;
+    let record = await UserSyllabusData.findOne({ userId });
+    if (!record) {
+      record = await UserSyllabusData.create({ userId, completedTopics: [] });
+    }
+    return res.status(200).json({ status: "success", data: record.completedTopics });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to fetch syllabus progress", details: error.message });
+  }
+};
+
+const toggleSyllabusTopic = async (req, res) => {
+  try {
+    const { UserSyllabusData } = require("../models/webmodel");
+    const userId = req.user._id;
+    const { topic } = req.body;
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
+    }
+
+    let record = await UserSyllabusData.findOne({ userId });
+    if (!record) {
+      record = await UserSyllabusData.create({ userId, completedTopics: [] });
+    }
+
+    const index = record.completedTopics.indexOf(topic);
+    if (index > -1) {
+      record.completedTopics.splice(index, 1);
+    } else {
+      record.completedTopics.push(topic);
+    }
+
+    await record.save();
+    return res.status(200).json({ status: "success", data: record.completedTopics });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to toggle syllabus topic", details: error.message });
+  }
+};
+
 module.exports = {
   profileController,
   Savepreferences,
@@ -256,4 +298,6 @@ module.exports = {
   toggleBookmark,
   checkBookmark,
   getBookmarks,
+  getUserSyllabus,
+  toggleSyllabusTopic,
 };

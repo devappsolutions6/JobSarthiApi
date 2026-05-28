@@ -40,6 +40,8 @@ const {
   toggleBookmark,
   checkBookmark,
   getBookmarks,
+  getUserSyllabus,
+  toggleSyllabusTopic,
 } = require("../controller/userController");
 const {
   subscribe,
@@ -94,5 +96,9 @@ router.get("/user/preferencesJobs", authMiddleware, recommendJobsController);
 router.post("/user/bookmark/:jobId", authMiddleware, toggleBookmark);
 router.get("/user/bookmark/:jobId",  authMiddleware, checkBookmark);
 router.get("/user/bookmarks",        authMiddleware, getBookmarks);
+
+// Syllabus Progress routes
+router.get("/user/syllabus", authMiddleware, getUserSyllabus);
+router.post("/user/syllabus/toggle", authMiddleware, toggleSyllabusTopic);
 
 module.exports = router;

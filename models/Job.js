@@ -436,6 +436,11 @@ const JobSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    syllabusStream: {
+      type: String,
+      enum: ["SSC", "Railway", "Banking", "UPSC", "Defence", "State", "None"],
+      default: "None",
+    },
 
     // schemaVersion = 3 for unified flat schema structure
     schemaVersion: {
