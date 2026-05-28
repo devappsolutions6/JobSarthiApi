@@ -1,6 +1,6 @@
 /**
  * Utility helper to dynamically map job domains/categories to high-quality,
- * live, and highly-relevant sector-specific landscape images for push alerts.
+ * live, and highly-relevant sector-specific landscape images for push alertss.
  */
 function getJobNotificationImage(job) {
   if (!job) return "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=1200&h=600&q=80";
