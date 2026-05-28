@@ -332,18 +332,15 @@ class RecommendationService {
     const userId = user._id;
     const contactId = user.contactId || user.email || user._id.toString();
 
-    // Fetch user preferences
-    const pref = await UserPreference.findOne({ userId }).lean();
-
     const userProfile = {
       education: user.education || { levels: [], stream: [], specialization: [] },
-      preferredLocations: pref?.preferredLocations || ["all india"],
-      organizationTypes: pref?.organizationTypes || [],
-      interests: pref?.interests || [],
+      preferredLocations: user.preferredLocations || ["all india"],
+      organizationTypes: user.organizationTypes || [],
+      interests: user.interests || [],
       gender: user.gender || "any",
       dob: user.dob || null,
       category: user.category || "",
-      selectionPreference: pref?.selectionPreference || "any",
+      selectionPreference: user.selectionPreference || "any",
     };
 
     // Calculate recommendations in pure Node JS memory
@@ -468,30 +465,27 @@ class RecommendationService {
       let processedJobsCount = 0;
       for (const job of unprocessedJobs) {
         // Approach 2: Query only the subset of users whose preferences overlap with this job's domains or location
-        const affectedPreferences = await UserPreference.find({
+        const affectedUsers = await User.find({
           $or: [
             { interests: { $in: job.jobDomains || [] } },
             { preferredLocations: job.location }
           ]
         }).lean();
 
-        console.log(`⚡ [Recommendations] Processing job "${job.title}" for ${affectedPreferences.length} affected user profiles...`);
+        console.log(`⚡ [Recommendations] Processing job "${job.title}" for ${affectedUsers.length} affected user profiles...`);
         
         const bulkOps = []; // Collect operations for high-performance bulkWrite
 
-        for (const pref of affectedPreferences) {
-          const user = await User.findById(pref.userId).lean();
-          if (!user) continue;
-
+        for (const user of affectedUsers) {
           const userProfile = {
             education: user.education || { levels: [], stream: [], specialization: [] },
-            preferredLocations: pref.preferredLocations || ["all india"],
-            organizationTypes: pref.organizationTypes || [],
-            interests: pref.interests || [],
+            preferredLocations: user.preferredLocations || ["all india"],
+            organizationTypes: user.organizationTypes || [],
+            interests: user.interests || [],
             gender: user.gender || "any",
             dob: user.dob || null,
             category: user.category || "",
-            selectionPreference: pref.selectionPreference || "any",
+            selectionPreference: user.selectionPreference || "any",
           };
 
           // Normalize profile exactly once for this user
