@@ -72,7 +72,6 @@ async function runFullRebuild() {
     // Step 2: Collect all older/expired/inactive jobs (full documents)
     const deadJobs = await Job.find({
       $or: [
-        { isActive: false },
         { status: "expired" },
         { "importantDates.applyEnd.date": { $lt: new Date() } },
       ],
