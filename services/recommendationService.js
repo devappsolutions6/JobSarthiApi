@@ -78,7 +78,7 @@ class RecommendationService {
     } = normalizedProfile;
 
     // Job location is lowercase in DB after migration — direct compare
-    const jobLocation = (job.location || "all india");
+    const jobLocation = String(job.location || "all india").toLowerCase();
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  STAGE 1 — HARD MATCH (Eligibility Filter)
@@ -93,8 +93,19 @@ class RecommendationService {
             // levelCode is always a standard code in DB — direct lookup, no fallback needed
             const requiredRank = educationRank[edu.levelCode] || 0;
             if (requiredRank > 0 && userMaxEduRank >= requiredRank) {
-              isEduEligible = true;
-              break;
+              if (edu.stream && edu.stream.trim().toLowerCase() !== "any" && educationStreams.length > 0) {
+                const reqStream = edu.stream.toLowerCase();
+                const streamMatch = educationStreams.some(s => 
+                  reqStream.includes(s.toLowerCase()) || s.toLowerCase().includes(reqStream)
+                );
+                if (streamMatch) {
+                  isEduEligible = true;
+                  break;
+                }
+              } else {
+                isEduEligible = true;
+                break;
+              }
             }
           }
         }
