@@ -290,7 +290,7 @@ class RecommendationService {
     const normalizedProfile = this.normalizeUserProfile(user);
 
     // High performance read-only lean query
-    const activeJobs = await Job.find({ isActive: true }).lean();
+    const activeJobs = await Job.find().lean();
     const scoredJobs = [];
 
     for (const job of activeJobs) {
