@@ -300,7 +300,7 @@ const JobCategoryController = async (req, res) => {
     const jobCollection = await JobsSchemaDatas.aggregate([
       {
         $match: {
-          status: "active",
+         
           // case-insensitive match: "railway", "Railway", "RAILWAY"
           jobDomains: { $elemMatch: { $regex: `^${rawType}$`, $options: "i" } }
         }
@@ -576,7 +576,7 @@ const eligibilityCheckController = async (req, res) => {
       : null;
 
     const andConditions = [
-      { status: "active" }
+      
     ];
 
     // Education cascade: graduate → eligible for diploma/12th/10th jobs too
@@ -635,9 +635,7 @@ const eligibilityCheckController = async (req, res) => {
   }
 };
 
-// Search Jobs — suggestions API
-// GET /web/api/search?q=ssc&limit=8
-// Highly optimized using MongoDB Full-Text search ($text) indexing instead of 7-field regex scans
+
 const searchJobs = async (req, res) => {
   try {
     const { q = "", limit = 8 } = req.query;
@@ -653,7 +651,7 @@ const searchJobs = async (req, res) => {
 
     const jobs = await JobsSchemaDatas.find(
       {
-        status: "active",
+    
         $or: [
           { title: regex },
           { conductingBody: regex },
