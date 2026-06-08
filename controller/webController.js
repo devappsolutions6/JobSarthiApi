@@ -681,6 +681,30 @@ const searchJobs = async (req, res) => {
   }
 };
 
+// Location Guessing API for unauthenticated users (Smart Default Location)
+// GET /web/api/location/guess
+const guessLocationController = async (req, res) => {
+  try {
+    const { getGeoLocation, extractIp } = require("../utils/geoService");
+    const clientIp = extractIp(req);
+    const locationData = await getGeoLocation(clientIp);
+
+    if (locationData && locationData.region) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          state: locationData.region,
+          city: locationData.city
+        }
+      });
+    }
+
+    return res.status(200).json({ success: false, message: "Could not guess location" });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Failed to guess location" });
+  }
+};
+
 module.exports = {
   getHomePageJobs,
   getJobs,
@@ -694,4 +718,5 @@ module.exports = {
   addExamCalendar,
   searchJobs,
   eligibilityCheckController,
+  guessLocationController,
 };

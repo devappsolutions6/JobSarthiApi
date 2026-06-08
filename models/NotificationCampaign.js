@@ -20,6 +20,26 @@ const NotificationCampaignSchema = new mongoose.Schema(
       type: String,
       default: "http://localhost:3000",
     },
+    // --- TARGETING FIELDS ---
+    // If these arrays are empty, the campaign is a global broadcast.
+    // If populated, the campaign only goes to users whose preferences match.
+    targetLocations: {
+      type: [String],
+      default: [],
+    },
+    targetStreams: {
+      type: [String],
+      default: [],
+    },
+    targetEduLevels: {
+      type: [String],
+      default: [],
+    },
+    targetKeywords: {
+      type: [String],
+      default: [],
+    },
+    // ------------------------
     status: {
       type: String,
       enum: ["draft", "ready", "sent"],

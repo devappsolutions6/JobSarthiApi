@@ -34,6 +34,29 @@ The `jobDomains` array field should only contain the following standard values:
 * `"Engineering"`
 * `"Other"`
 
+## 🎯 AI Generated Flat Arrays
+
+**CRITICAL:** The computationally expensive `pre("save")` hooks have been removed from the backend to maximize performance. **Your AI Agent or job scraping tool MUST generate a perfectly flattened payload**, including the `recommendationTargets` object and the flat arrays for search, before sending it to the API to be saved. 
+
+### 1. Recommendation Targets (`recommendationTargets`)
+This object is used directly for instant 1-to-1 matching in the recommendation engine.
+
+* **`minEducationRank`**: The absolute lowest rank required across all posts (e.g., 2 for 12th pass).
+* **`eligibleStreams` / `eligibleSpecializations`**: Exact arrays of accepted streams and specializations (must be lowercase).
+* **`age`**:
+    * `asOnDate`: The official date age is calculated from (must be a valid Date).
+    * `maxObc` / `maxScSt`: Pre-calculated with standard category relaxations.
+* **`genders` / `categories`**: Which demographics have at least 1 vacancy available (lowercase).
+* **`organizationTypes` / `roles`**: Must perfectly match the frontend `ORG_TYPES` and `QUICK_INTERESTS` constants to ensure they match User Preferences.
+* **`selectionFlags`**: Boolean values representing the stages present in the selection process.
+
+### 2. Search & Filter Arrays
+The AI must extract a unique, flattened list of these fields from the complex nested objects to allow fast database querying.
+
+* **`streams`**: Array of lowercase strings (e.g., `["arts", "science"]`).
+* **`specializations`**: Array of lowercase strings (e.g., `["computer science", "electrical"]`).
+* **`searchTokens`**: Combine job domains, tags, roles, and conducting body into a single lowercase array to power the global text search (e.g., `["banking", "finance", "sbi", "clerk"]`).
+
 ---
 
 ## 📝 Example JSON Document
@@ -275,6 +298,46 @@ The `jobDomains` array field should only contain the following standard values:
     "ST",
     "OBC"
   ],
+  "streams": [
+    "any"
+  ],
+  "specializations": [
+    "any"
+  ],
+  "searchTokens": [
+    "state",
+    "psu",
+    "graduates",
+    "assistant",
+    "superintendent",
+    "odisha",
+    "oswc",
+    "assistant superintendent",
+    "warehouse assistant",
+    "odisha state warehousing corporation",
+    "food, supplies & consumer welfare department"
+  ],
+  "recommendationTargets": {
+    "minEducationRank": 4,
+    "eligibleStreams": [],
+    "eligibleSpecializations": [],
+    "age": {
+      "asOnDate": { "$date": "2026-05-15T00:00:00.000Z" },
+      "min": 21,
+      "maxGen": 38,
+      "maxObc": 41,
+      "maxScSt": 43
+    },
+    "genders": ["male", "female"],
+    "categories": ["ur", "sebc", "sc", "st"],
+    "organizationTypes": ["State", "PSU"],
+    "roles": ["Assistant"],
+    "selectionFlags": {
+      "hasWrittenTest": true,
+      "hasPhysicalTest": false,
+      "hasInterview": false
+    }
+  },
   "popularityScore": 0,
   "viewCount": 0,
   "saveCount": 0,

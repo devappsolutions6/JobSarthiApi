@@ -28,6 +28,16 @@ const UserSignupSchema = new mongoose.Schema({
   interests: { type: [String], default: [] },
   dob: { type: Date },
   selectionPreference: { type: String, enum: SELECTION_PREFERENCES, default: "any" },
+  lastLocation: {
+    ip: String,
+    city: String,
+    region: String,
+    country: String,
+    lat: Number,
+    lon: Number,
+    isp: String,
+    updatedAt: Date
+  }
 }, { timestamps: true });
 
 /* ==========================================================

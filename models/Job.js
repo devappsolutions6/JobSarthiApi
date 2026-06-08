@@ -19,6 +19,12 @@ const JobSchema = new mongoose.Schema(
       uppercase: true,
     },
 
+    notificationGroupId: {
+      type: String,
+      index: true,
+      trim: true,
+    },
+
     urlTitle: {
       type: String,
       required: true,
@@ -123,33 +129,13 @@ const JobSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
-      breakup: [
-        {
-          postCode: String,
-          level: String,
-          name: String,
-          organization: String,
-          posts: Number,
-          ageMin: Number,
-          ageMax: Number,
-          payScale: {
-            level: String,
-            min: Number,
-            max: Number,
-            currency: {
-              type: String,
-              default: "INR",
-            },
-          },
-          categoryWise: mongoose.Schema.Types.Mixed,
-          categoryWiseAvailable: {
-            type: Boolean,
-            default: false,
-          },
-          genderWise: mongoose.Schema.Types.Mixed,
-          horizontalReservation: mongoose.Schema.Types.Mixed,
-        },
-      ],
+      categoryWiseAvailable: {
+        type: Boolean,
+        default: false,
+      },
+      categoryWise: mongoose.Schema.Types.Mixed,
+      genderWise: mongoose.Schema.Types.Mixed,
+      horizontalReservation: mongoose.Schema.Types.Mixed,
     },
 
     /* =========================
@@ -181,49 +167,43 @@ const JobSchema = new mongoose.Schema(
        📚 ELIGIBILITY CRITERIA
        ========================== */
     eligibility: {
-      posts: [
+      age: {
+        min: Number,
+        max: Number,
+      },
+      education: [
         {
-          postName: String,
-          age: {
-            min: Number,
-            max: Number,
+          level: String,
+          degree: String,
+          levelCode: {
+            type: String,
+            enum: EDUCATION_LEVEL_CODES,
           },
-          education: [
-            {
-              level: String,
-              degree: String,
-              levelCode: {
-                type: String,
-                enum: EDUCATION_LEVEL_CODES,
-                index: true,
-              },
-              stream: String,
-              specialization: String,
-              minMarks: Number,
-              required: {
-                type: Boolean,
-                default: true,
-              },
-            },
-          ],
-          alternativeQualifications: [
-            {
-              degree: String,
-              description: String,
-            },
-          ],
-          experience: {
-            required: {
-              type: Boolean,
-              default: false,
-            },
-            minYears: Number,
-            field: String,
+          stream: String,
+          specialization: String,
+          minMarks: Number,
+          required: {
+            type: Boolean,
+            default: true,
           },
-          certifications: [String],
-          skills: [String],
         },
       ],
+      alternativeQualifications: [
+        {
+          degree: String,
+          description: String,
+        },
+      ],
+      experience: {
+        required: {
+          type: Boolean,
+          default: false,
+        },
+        minYears: Number,
+        field: String,
+      },
+      certifications: [String],
+      skills: [String],
       generalRequirements: [String],
     },
 
@@ -394,6 +374,37 @@ const JobSchema = new mongoose.Schema(
     tags: [String],
     searchKeywords: [String],
     targetCategories: [String],
+    
+    // Auto-computed flat arrays for blazing fast personalization matching
+    streams: [String],
+    specializations: [String],
+    searchTokens: [String],
+
+    /* =========================
+       🎯 RECOMMENDATION TARGETS
+       Perfectly flattened object for instant recommendation matching
+       ========================== */
+    recommendationTargets: {
+      minEducationRank: { type: Number, default: 0 },
+      eligibleStreams: [String],
+      eligibleSpecializations: [String],
+      age: {
+        asOnDate: Date,
+        min: { type: Number, default: 0 },
+        maxGen: { type: Number, default: 99 },
+        maxObc: { type: Number, default: 99 },
+        maxScSt: { type: Number, default: 99 },
+      },
+      genders: [String],
+      categories: [String],
+      organizationTypes: [String],
+      roles: [String],
+      selectionFlags: {
+        hasWrittenTest: { type: Boolean, default: false },
+        hasPhysicalTest: { type: Boolean, default: false },
+        hasInterview: { type: Boolean, default: false },
+      }
+    },
 
     relatedJobs: [
       {
@@ -458,14 +469,6 @@ const JobSchema = new mongoose.Schema(
    ========================================================== */
 
 JobSchema.index({
-  title: "text",
-  conductingBody: "text",
-  department: "text",
-  tags: "text",
-  searchKeywords: "text",
-});
-
-JobSchema.index({
   isActive: 1,
   createdAt: -1,
 });
@@ -492,17 +495,14 @@ JobSchema.index({
 });
 
 // Compound indexes to optimize complex multi-preference checks (like eligibility checks and matching recommendations)
-JobSchema.index({
-  status: 1,
-  jobDomains: 1,
-  location: 1,
-});
 
 JobSchema.index({
   status: 1,
   "eligibility.posts.education.levelCode": 1,
   location: 1,
 });
+
+
 
 /* ==========================================================
    🧹 CACHE INVALIDATION HOOKS

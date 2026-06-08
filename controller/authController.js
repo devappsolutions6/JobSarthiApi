@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { validateSignupInput } = require("../utils/validation");
 const { sendOtpEmail } = require("../utils/emailService");
+const { getGeoLocation, extractIp } = require("../utils/geoService");
 const { OAuth2Client } = require("google-auth-library");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -59,6 +60,10 @@ const userSignupController = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
+    // Capture User IP Geolocation seamlessly (non-blocking)
+    const clientIp = extractIp(req);
+    const locationData = await getGeoLocation(clientIp);
+
     // Create new user
     const newUser = new UserSignupSchemaDatas({
       firstName: sanitizedFirstName,
@@ -67,6 +72,7 @@ const userSignupController = async (req, res) => {
       password: hashedPassword,
       otp,
       otpExpiry,
+      lastLocation: locationData || undefined,
       createdAt: new Date(),
     });
 
@@ -173,10 +179,16 @@ const userLoginController = async (req, res) => {
       { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d" }
     );
 
-    // Update refreshToken and lastLogin in DB
+    // Update refreshToken, lastLogin, and IP Location in DB
     try {
+      const clientIp = extractIp(req);
+      const locationData = await getGeoLocation(clientIp);
+      
       user.refreshToken = refreshToken;
       user.lastLogin = new Date();
+      if (locationData) {
+        user.lastLocation = locationData;
+      }
       await user.save();
     } catch (e) {
       console.warn("Could not update user session data:", e.message);
@@ -275,6 +287,18 @@ const googleLoginController = async (req, res) => {
 
     user.refreshToken = refreshToken;
     user.lastLogin = new Date();
+    
+    // Capture Location seamlessly
+    try {
+      const clientIp = extractIp(req);
+      const locationData = await getGeoLocation(clientIp);
+      if (locationData) {
+        user.lastLocation = locationData;
+      }
+    } catch(err) {
+      // ignore
+    }
+    
     await user.save();
 
     res.cookie("token", accessToken, {

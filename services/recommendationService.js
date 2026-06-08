@@ -26,11 +26,6 @@ class RecommendationService {
 
     const today = new Date();
     const cat = (userCategory || "").toLowerCase();
-    const categoryRelaxation = cat === "sc" || cat === "st" ? 5 : cat === "obc" ? 3 : 0;
-
-    const userAge = dob
-      ? Math.floor((today - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000))
-      : null;
 
     const educationLevels = education.levels || [];
     const userMaxEduRank = educationLevels.reduce(
@@ -51,8 +46,6 @@ class RecommendationService {
       userCategory: cat,
       selectionPreference: (selectionPreference || "any").toLowerCase(),
       catVacField: ["obc", "sc", "st", "ews"].includes(cat) ? cat : null,
-      categoryRelaxation,
-      userAge,
       userMaxEduRank,
     };
   }
@@ -72,10 +65,14 @@ class RecommendationService {
       userCategory,
       selectionPreference,
       catVacField,
-      categoryRelaxation,
-      userAge,
       userMaxEduRank,
+      dob
     } = normalizedProfile;
+
+    const targets = job.recommendationTargets;
+    
+    // If the job hasn't been migrated yet, skip it (or fallback to old logic, but migration handles this)
+    if (!targets) return null;
 
     // Job location is lowercase in DB after migration — direct compare
     const jobLocation = String(job.location || "all india").toLowerCase();
@@ -84,162 +81,90 @@ class RecommendationService {
     //  STAGE 1 — HARD MATCH (Eligibility Filter)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    // A. Education filter
-    let isEduEligible = false;
-    if (job.eligibility?.posts && job.eligibility.posts.length > 0) {
-      for (const post of job.eligibility.posts) {
-        if (post.education && post.education.length > 0) {
-          for (const edu of post.education) {
-            // levelCode is always a standard code in DB — direct lookup, no fallback needed
-            const requiredRank = educationRank[edu.levelCode] || 0;
-            if (requiredRank > 0 && userMaxEduRank >= requiredRank) {
-              if (edu.stream && edu.stream.trim().toLowerCase() !== "any" && educationStreams.length > 0) {
-                const reqStream = edu.stream.toLowerCase();
-                const streamMatch = educationStreams.some(s => 
-                  reqStream.includes(s.toLowerCase()) || s.toLowerCase().includes(reqStream)
-                );
-                if (streamMatch) {
-                  isEduEligible = true;
-                  break;
-                }
-              } else {
-                isEduEligible = true;
-                break;
-              }
-            }
-          }
-        }
-        if (isEduEligible) break;
-      }
-    }
+    // A. Education filter (Direct Rank Comparison)
+    if (userMaxEduRank < targets.minEducationRank) return null;
 
-    if (!isEduEligible) return null;
-
-    // B. Location filter — jobLocation and preferredLocations are both lowercase
+    // B. Location filter
     let isLocEligible = false;
     if (wantsAllIndia || jobLocation === "all india") {
       isLocEligible = true;
     } else {
       isLocEligible = stateLocations.some(prefLoc => jobLocation.includes(prefLoc));
     }
-
     if (!isLocEligible) return null;
 
-    // C. Organization/Domains filter — jobDomains and tags are lowercase in DB
-    let isOrgEligible = true;
-    if (organizationTypes.length > 0) {
-      const jobTokens = [
-        ...(job.jobDomains || []),
-        ...(job.tags || []),
-        job.conductingBody?.toLowerCase(),
-        job.department?.toLowerCase(),
-      ].filter(Boolean);
-
-      isOrgEligible = organizationTypes.some(prefOrg =>
-        jobTokens.some(jobToken => jobToken.includes(prefOrg))
-      );
+    // C. Organization filter
+    if (organizationTypes.length > 0 && targets.organizationTypes && targets.organizationTypes.length > 0) {
+      const orgMatch = targets.organizationTypes.some(t => organizationTypes.includes(t));
+      if (!orgMatch) return null;
     }
-
-    if (!isOrgEligible) return null;
 
     // D. Selection preference filter
-    const stages = (job.selectionProcess || []).map(s => (s.stage || "").toLowerCase());
-    let isSelEligible = true;
-    if (selectionPreference === "written") {
-      const hasPhysical = stages.some(s => /pet|physical|medical/i.test(s));
-      const hasInterview = stages.some(s => /interview/i.test(s));
-      if (hasPhysical || hasInterview) isSelEligible = false;
-    } else if (selectionPreference === "pet") {
-      isSelEligible = stages.some(s => /pet|physical|medical/i.test(s));
-    } else if (selectionPreference === "interview") {
-      isSelEligible = stages.some(s => /interview/i.test(s));
-    }
-
-    if (!isSelEligible) return null;
+    if (selectionPreference === "written" && (targets.selectionFlags.hasPhysicalTest || targets.selectionFlags.hasInterview)) return null;
+    if (selectionPreference === "pet" && targets.selectionFlags.hasPhysicalTest === false) return null;
+    if (selectionPreference === "interview" && targets.selectionFlags.hasInterview === false) return null;
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  STAGE 2 — SOFT SCORING (Weighted Token Matching)
     // ═══════════════════════════════════════════════════════════════════════════
 
-    // 1. Org Match — jobDomains/tags are lowercase, organizationTypes are lowercase
-    const jobOrgTokens = [
-      ...(job.jobDomains || []),
-      ...(job.tags || []),
-      job.conductingBody?.toLowerCase(),
-      job.department?.toLowerCase(),
-    ].filter(Boolean);
-    const orgMatchCount = new Set(jobOrgTokens.filter(t => organizationTypes.includes(t))).size;
-    const orgScore = Math.min(orgMatchCount * 15, 40);
+    let score = 0;
 
-    // 2. Interest Match — tags/searchKeywords/jobDomains are lowercase, interests are lowercase
-    const jobInterestTokens = [
-      ...(job.tags || []),
-      ...(job.searchKeywords || []),
-      ...(job.jobDomains || []),
-    ].filter(Boolean);
-    const interestMatchCount = new Set(jobInterestTokens.filter(t => interests.includes(t))).size;
-    const interestScore = Math.min(interestMatchCount * 10, 35);
+    // 1. Org Match
+    const orgMatchCount = targets.organizationTypes ? targets.organizationTypes.filter(t => organizationTypes.includes(t)).length : 0;
+    score += Math.min(orgMatchCount * 15, 40);
+
+    // 2. Interest / Roles Match
+    const roleMatchCount = targets.roles ? targets.roles.filter(t => interests.includes(t)).length : 0;
+    score += Math.min(roleMatchCount * 10, 35);
 
     // 3. Exact State Match
     const isExactStateMatch = !wantsAllIndia && stateLocations.includes(jobLocation);
-    const locationScore = isExactStateMatch ? 20 : 0;
+    if (isExactStateMatch) score += 20;
 
     // 4. Category Vacancy Match
-    let categoryScore = 0;
-    if (catVacField && Array.isArray(job.vacancies?.breakup)) {
-      const hasCatVacancy = job.vacancies.breakup.some(p =>
-        p.categoryWise && p.categoryWise[catVacField] > 0
-      );
-      if (hasCatVacancy) categoryScore = 18;
+    if (catVacField && targets.categories && targets.categories.includes(catVacField)) {
+      score += 18;
     }
 
     // 5. Age Match
-    let ageScore = 12;
-    if (userAge !== null && job.ageCriteria?.numberBased) {
-      const minAge = job.ageCriteria.numberBased.min || 0;
-      const maxAge = (job.ageCriteria.numberBased.max || 99) + categoryRelaxation;
-      if (userAge < minAge || userAge > maxAge) ageScore = 0;
+    if (dob) {
+      // Calculate exact age based on the job's official cutoff date
+      const asOnDate = targets.age.asOnDate ? new Date(targets.age.asOnDate) : new Date();
+      const userAgeAsOnDate = Math.floor((asOnDate - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+      
+      let maxAllowed = targets.age.maxGen;
+      if (["obc"].includes(userCategory)) maxAllowed = targets.age.maxObc;
+      if (["sc", "st"].includes(userCategory)) maxAllowed = targets.age.maxScSt;
+      
+      if (userAgeAsOnDate >= targets.age.min && userAgeAsOnDate <= maxAllowed) {
+        score += 12;
+      }
     }
 
-    // 6. Specialization Match — edu.specialization is lowercase in DB, specializations are lowercase
-    const jobSpecializations = (job.eligibility?.posts || [])
-      .flatMap(p => (p.education || []).map(e => e.specialization))
-      .filter(Boolean);
-    const specializationScore = Math.min(
-      new Set(jobSpecializations.filter(s => specializations.includes(s))).size * 12, 24
-    );
+    // 6. Specialization Match
+    if (targets.eligibleSpecializations) {
+      const specMatchCount = targets.eligibleSpecializations.filter(js => specializations.some(us => js.includes(us) || us.includes(js))).length;
+      score += Math.min(specMatchCount * 12, 24);
+    }
 
     // 7. Selection Process Score
-    let selectionScore = 0;
-    if (selectionPreference === "written") {
-      if (!stages.some(s => /pet|physical|medical/i.test(s)) && !stages.some(s => /interview/i.test(s))) {
-        selectionScore = 15;
-      }
-    } else if (selectionPreference === "pet" && stages.some(s => /pet|physical|medical/i.test(s))) {
-      selectionScore = 15;
-    } else if (selectionPreference === "interview" && stages.some(s => /interview/i.test(s))) {
-      selectionScore = 15;
-    }
+    if (selectionPreference === "written" && !targets.selectionFlags.hasPhysicalTest && !targets.selectionFlags.hasInterview) score += 15;
+    if (selectionPreference === "pet" && targets.selectionFlags.hasPhysicalTest) score += 15;
+    if (selectionPreference === "interview" && targets.selectionFlags.hasInterview) score += 15;
 
     // 8. Gender Match
-    let genderScore = 0;
-    if (gender === "male" || gender === "female") {
-      const hasGenderVacancy = (job.vacancies?.breakup || []).some(p =>
-        p.genderWise && p.genderWise[gender] > 0
+    if ((gender === "male" || gender === "female") && targets.genders && targets.genders.includes(gender)) {
+      score += 10;
+    }
+
+    // 9. Stream Match
+    if (educationStreams.length > 0 && targets.eligibleStreams) {
+      const streamMatch = targets.eligibleStreams.some(js => 
+        educationStreams.some(us => js.includes(us) || us.includes(js))
       );
-      if (hasGenderVacancy) genderScore = 10;
+      if (streamMatch) score += 10;
     }
-
-    // 9. Stream Match — edu.stream is lowercase in DB, educationStreams are lowercase
-    let streamScore = 0;
-    if (educationStreams.length > 0) {
-      const jobStreams = (job.eligibility?.posts || [])
-        .flatMap(p => (p.education || []).map(e => e.stream))
-        .filter(Boolean);
-      if (jobStreams.some(s => educationStreams.includes(s))) streamScore = 10;
-    }
-
-    const relevanceScore = orgScore + interestScore + locationScore + categoryScore + ageScore + specializationScore + selectionScore + genderScore + streamScore;
 
     return {
       jobId: job._id,
@@ -258,11 +183,11 @@ class RecommendationService {
       vacancies: {
         total: job.vacancies?.total || 0,
       },
-      score: relevanceScore,
+      score: score,
       matchedOn: ["education", "location", "interest"].filter((reason) => {
-        if (reason === "education" && job.eligibility?.posts?.length > 0) return true;
+        if (reason === "education") return true;
         if (reason === "location" && job.location) return true;
-        if (reason === "interest" && job.jobDomains?.length > 0) return true;
+        if (reason === "interest" && targets.roles?.length > 0) return true;
         return false;
       }),
       generatedAt: new Date(),

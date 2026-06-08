@@ -51,7 +51,11 @@ app.use(
   })
 );
 
-Database();
+Database().then(async () => {
+  // Run background data flattening & cleanup
+  const { runStartupMigration } = require("./utils/startupMigration");
+  await runStartupMigration();
+});
 
 // Routes
 app.use("/web/api", webroutes);

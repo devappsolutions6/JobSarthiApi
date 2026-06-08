@@ -15,25 +15,76 @@ async function processPendingCampaigns() {
       return;
     }
 
-    console.log(`📢 [CampaignScheduler] Found ${pendingCampaigns.length} pending broadcast campaigns to execute.`);
+    for (const campaign of pendingCampaigns) {
+      console.log(`🚀 [CampaignScheduler] Evaluating Campaign "${campaign.title}"...`);
 
-    // Fetch all active subscribers from database
-    const activeSubscribers = await NotificationSubscription.find({ isActive: true }).lean();
-    if (activeSubscribers.length === 0) {
-      console.log("ℹ️ [CampaignScheduler] No active subscribers found. Skipping broadcast.");
-      
-      // Update campaign as processed with 0 recipients
-      for (const campaign of pendingCampaigns) {
+      const isTargeted = 
+        (campaign.targetLocations && campaign.targetLocations.length > 0) ||
+        (campaign.targetStreams && campaign.targetStreams.length > 0) ||
+        (campaign.targetEduLevels && campaign.targetEduLevels.length > 0) ||
+        (campaign.targetKeywords && campaign.targetKeywords.length > 0);
+
+      let activeSubscribers = [];
+
+      if (!isTargeted) {
+        // Global Broadcast: Send to all active subscribers
+        activeSubscribers = await NotificationSubscription.find({ isActive: true }).lean();
+        console.log(`📢 [CampaignScheduler] Global Broadcast mode: Found ${activeSubscribers.length} total active subscribers.`);
+      } else {
+        // Targeted Broadcast: Only send to subscribers whose UserPreferences match the tags
+        const matchConditions = [];
+
+        // Note: For targeted broadcasts, we inherently require a logged-in user with a preference profile.
+        // Unauthenticated guests do not receive targeted notifications in this design.
+        
+        if (campaign.targetLocations && campaign.targetLocations.length > 0) {
+          matchConditions.push({ "preferences.preferredLocations": { $in: campaign.targetLocations.map(t => t.toLowerCase()) } });
+        }
+        if (campaign.targetStreams && campaign.targetStreams.length > 0) {
+          matchConditions.push({ "preferences.education.stream": { $in: campaign.targetStreams.map(t => t.toLowerCase()) } });
+        }
+        if (campaign.targetEduLevels && campaign.targetEduLevels.length > 0) {
+          matchConditions.push({ "preferences.education.levels": { $in: campaign.targetEduLevels } });
+        }
+        if (campaign.targetKeywords && campaign.targetKeywords.length > 0) {
+          const lowerKeywords = campaign.targetKeywords.map(k => k.toLowerCase());
+          matchConditions.push({
+            $or: [
+              { "preferences.interests": { $in: lowerKeywords } },
+              { "preferences.organizationTypes": { $in: lowerKeywords } }
+            ]
+          });
+        }
+
+        // We use Aggregation to join the subscriptions with user preferences
+        const pipeline = [
+          { $match: { isActive: true, userId: { $ne: null } } },
+          {
+            $lookup: {
+              from: "userpreferences",
+              localField: "userId",
+              foreignField: "userId",
+              as: "preferences"
+            }
+          },
+          { $unwind: { path: "$preferences", preserveNullAndEmptyArrays: false } }, // Ensure they have a profile
+          { $match: { $and: matchConditions } } // Apply targeting filters (AND logic between different target arrays)
+        ];
+
+        activeSubscribers = await NotificationSubscription.aggregate(pipeline);
+        console.log(`🎯 [CampaignScheduler] Targeted Broadcast mode: Found ${activeSubscribers.length} matching subscribers out of all active tokens.`);
+      }
+
+      if (activeSubscribers.length === 0) {
+        console.log(`ℹ️ [CampaignScheduler] No subscribers found/matched for "${campaign.title}". Skipping broadcast.`);
         await NotificationCampaign.updateOne(
           { _id: campaign._id },
           { $set: { status: "sent", isSent: true, sentAt: new Date(), recipientsCount: 0 } }
         );
+        continue;
       }
-      return;
-    }
 
-    for (const campaign of pendingCampaigns) {
-      console.log(`🚀 [CampaignScheduler] Broadcasting Campaign "${campaign.title}" to ${activeSubscribers.length} devices...`);
+      console.log(`🚀 [CampaignScheduler] Broadcasting "${campaign.title}" to ${activeSubscribers.length} devices...`);
 
       let successCount = 0;
       const { getCampaignCategoryImage } = require("./categoryImages");

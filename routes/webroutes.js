@@ -58,6 +58,7 @@ router.post("/notifications/subscribe", subscribe);
 router.post("/notifications/unsubscribe", unsubscribe);
 router.post("/notifications/test-push", testNotification);
 
+router.get("/location/guess", require("../controller/webController").guessLocationController);
 router.get("/search", searchJobs);
 router.post("/eligibility-check", eligibilityCheckController);
 router.get("/getJobs", getJobs);
