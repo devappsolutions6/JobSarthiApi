@@ -3,7 +3,7 @@
 > Author: Vishal Kumar
 > Last Updated: March 2026
 > Deployed On: Render
-> Frontend: https://www.aspirantcareer.in  
+> Frontend: https://www.aspirantcareer.in   
 
 ---
 
