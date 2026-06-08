@@ -1,4 +1,4 @@
-# aspirantcareer.in API — Architecture Documentation
+# aspirantcareer.in API — Architecture Documentations
 
 > Author: Vishal Kumar
 > Last Updated: March 2026
