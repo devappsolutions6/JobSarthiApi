@@ -102,6 +102,7 @@ const getHomePageJobs = async (req, res) => {
     
         const filter = {
           status: sort === "latest" ? { $in: ["active", "upcoming"] } : "active",
+          isPrimaryPost: { $ne: false },
           $or: [
             { "importantDates.applyEnd.date": null },
             { "importantDates.applyEnd.date": { $exists: false } },
@@ -112,7 +113,7 @@ const getHomePageJobs = async (req, res) => {
         const skip = (Number(page) - 1) * Number(limit);
 
         const projection = {
-          _id: 1, title: 1, jobCode: 1, urlTitle: 1,
+          _id: 1, title: 1, masterTitle: 1, jobCode: 1, urlTitle: 1,
           "vacancies.total": 1,
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
@@ -131,6 +132,7 @@ const getHomePageJobs = async (req, res) => {
 
           countFilter = {
             status: "active",
+            isPrimaryPost: { $ne: false },
             $or: [
               {
                 "importantDates.applyEnd.date": {

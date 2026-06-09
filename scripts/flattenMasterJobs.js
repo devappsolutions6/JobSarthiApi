@@ -54,18 +54,31 @@ async function runMigration() {
         // Deep copy the original job to create the clone
         const newJob = JSON.parse(JSON.stringify(job));
         
+        // Fix Date objects corrupted by JSON stringify
+        if (newJob.createdAt) newJob.createdAt = new Date(newJob.createdAt);
+        if (newJob.updatedAt) newJob.updatedAt = new Date(newJob.updatedAt);
+        if (newJob.importantDates) {
+          for (const key of Object.keys(newJob.importantDates)) {
+            if (newJob.importantDates[key]?.date) newJob.importantDates[key].date = new Date(newJob.importantDates[key].date);
+          }
+          if (newJob.importantDates.correctionWindow?.start) newJob.importantDates.correctionWindow.start = new Date(newJob.importantDates.correctionWindow.start);
+          if (newJob.importantDates.correctionWindow?.end) newJob.importantDates.correctionWindow.end = new Date(newJob.importantDates.correctionWindow.end);
+        }
+
         // Remove MongoDB ID and version so we can insert as new
         delete newJob._id;
         delete newJob.__v;
 
         // 1. Set Identifiers
         newJob.notificationGroupId = job.jobCode;
+        newJob.isPrimaryPost = (i === 0);
+        newJob.masterTitle = job.title;
         
         // If there's only 1 post, we can keep the original codes/urls.
         // If > 1, we must append index to keep them unique.
         if (posts.length > 1) {
-            // Modify title
-            newJob.title = `${job.title} - ${post.postName}`;
+            // Modify title (Keep short title for post details)
+            newJob.title = post.postName || `${job.title} - Part ${i + 1}`;
             // Modify unique keys
             newJob.jobCode = `${job.jobCode}-P${i + 1}`;
             newJob.urlTitle = `${job.urlTitle}-p${i + 1}`;

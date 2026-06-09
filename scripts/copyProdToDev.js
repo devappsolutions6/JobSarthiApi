@@ -4,7 +4,7 @@ const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 async function copyProdToDev() {
-  const prodUri = "mongodb+srv://imvksb:Book2231042%40@cluster0.7pbs4.mongodb.net/ProdBackup?retryWrites=true&w=majority";
+  const prodUri = "mongodb+srv://imvksb:Book2231042%40@cluster0.7pbs4.mongodb.net/JobSarthiv1?retryWrites=true&w=majority";
   const devUri = "mongodb+srv://imvksb:Book2231042%40@cluster0.7pbs4.mongodb.net/DevJobSarthi?retryWrites=true&w=majority";
 
   try {
@@ -14,7 +14,7 @@ async function copyProdToDev() {
     console.log("Connecting to Prod DB...");
     const prodConn = await mongoose.createConnection(prodUri).asPromise();
 
-    const collectionsToCopy = ["jobs", "users", "userrecommendations"]; // Add more if needed
+    const collectionsToCopy = ["jobschemas", "jobs", "oldjobs", "users", "userrecommendations"]; // Add more if needed
 
     for (const collectionName of collectionsToCopy) {
       console.log(`\n--- Processing collection: ${collectionName} ---`);

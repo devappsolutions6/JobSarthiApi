@@ -34,6 +34,17 @@ const JobSchema = new mongoose.Schema(
       trim: true,
     },
 
+    isPrimaryPost: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    masterTitle: {
+      type: String,
+      trim: true,
+    },
+
     title: {
       type: String,
       required: true,

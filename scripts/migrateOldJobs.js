@@ -248,7 +248,7 @@ async function runOldJobsMigration() {
         newJob.notificationGroupId = job.jobCode;
 
         if (posts.length > 1) {
-          newJob.title = `${job.title} - ${post.postName}`;
+          newJob.title = post.postName || `${job.title} - Part ${i + 1}`;
           newJob.jobCode = `${job.jobCode}-P${i + 1}`;
           newJob.urlTitle = `${job.urlTitle}-p${i + 1}`;
         }
