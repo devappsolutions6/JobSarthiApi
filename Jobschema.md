@@ -1,11 +1,26 @@
-# Job Schema Specification
+# Job Schema Specification
+
+<style>
+  /* Force dark background and high contrast text for code blocks in all markdown previews */
+  pre {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0 !important;
+    padding: 16px !important;
+    border-radius: 8px !important;
+    border: 1px solid #3c3c3c !important;
+    overflow-x: auto !important;
+  }
+  pre code {
+    background-color: transparent !important;
+    color: #e0e0e0 !important;
+  }
+</style>
 
 This document defines the schema structure and the standard allowed codes for job database entries. 
 
 ---
 
 ## 🎓 Standard Education Level Codes (`levelCode`)
-
 
 To ensure exact matching in the recommendation engine and prevent server crashes, the `levelCode` field in `eligibility.education[]` must strictly match one of the following standardized codes. **Do not use custom codes like `EDU_PG` or `EDU_LLB`.**
 
@@ -68,7 +83,7 @@ This is the exact structure you need to use when manually creating JSONs for the
 
 This is the main card. Notice `isPrimaryPost: true`.
 
-```text
+```javascript
 {
   "title": "School Teacher (Class 1 to 5)",
   "jobCode": "BPSC-TRE-4.0-2026-P1",
@@ -276,6 +291,7 @@ This is the main card. Notice `isPrimaryPost: true`.
       "refundable": false
     }
   ],
+  // CRITICAL: All dates must be proper MongoDB Date objects in the DB (use valid ISO strings in raw JSON)
   "importantDates": {
     "notificationDate": {
       "date": "2026-03-21T00:00:00.000Z",
@@ -366,10 +382,12 @@ This is the main card. Notice `isPrimaryPost: true`.
     "bihar teacher tre 4 apply online",
     "bpsc secondary teacher tgt vacancy 2026"
   ],
+  // CRITICAL: Dates must be stored as proper Date objects in DB (valid ISO strings in JSON files)
   "createdAt": "2026-03-21T10:11:00.000Z",
   "updatedAt": "2026-05-26T12:57:48.096Z",
   "slug": "bpsc-school-teacher-tre-4-recruitment-2026-44000-posts",
   "schemaVersion": 3,
+  // CRITICAL: status field must exist and be explicitly defined (e.g. "active")
   "status": "active",
   "examLanguages": [
     "Hindi",
@@ -381,7 +399,7 @@ This is the main card. Notice `isPrimaryPost: true`.
     "dataCompleteness": "full",
     "lastVerifiedAt": "2026-05-19T10:33:41.303Z",
     "source": "official_notification",
-    "notes": ""
+    "notes": "CRITICAL: Date fields must be valid MongoDB Date objects in the DB. status field must be explicitly defined as 'active'."
   },
   "organization": "",
   "popularityScore": 0,
@@ -416,7 +434,7 @@ This is the main card. Notice `isPrimaryPost: true`.
 
 This is the sub-post card. Notice it shares the same `notificationGroupId` and `masterTitle` as the parent, but `isPrimaryPost` is `false`.
 
-```text
+```javascript
 {
   "title": "Middle School Teacher (Class 6 to 8)",
   "jobCode": "BPSC-TRE-4.0-2026-P2",
@@ -622,6 +640,7 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
       "refundable": false
     }
   ],
+  // CRITICAL: All dates must be proper MongoDB Date objects in the DB (use valid ISO strings in raw JSON)
   "importantDates": {
     "notificationDate": {
       "date": "2026-03-21T00:00:00.000Z",
@@ -712,10 +731,12 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "bihar teacher tre 4 apply online",
     "bpsc secondary teacher tgt vacancy 2026"
   ],
+  // CRITICAL: Dates must be stored as proper Date objects in DB (valid ISO strings in JSON files)
   "createdAt": "2026-03-21T10:11:00.000Z",
   "updatedAt": "2026-05-26T12:57:48.096Z",
   "slug": "bpsc-school-teacher-tre-4-recruitment-2026-44000-posts",
   "schemaVersion": 3,
+  // CRITICAL: status field must exist and be explicitly defined (e.g. "active")
   "status": "active",
   "examLanguages": [
     "Hindi",
@@ -727,7 +748,7 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "dataCompleteness": "full",
     "lastVerifiedAt": "2026-05-19T10:33:41.303Z",
     "source": "official_notification",
-    "notes": ""
+    "notes": "CRITICAL: Date fields must be valid MongoDB Date objects in the DB. status field must be explicitly defined as 'active'."
   },
   "organization": "",
   "popularityScore": 0,
