@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 const { SELECTION_PREFERENCES, EDUCATION_LEVEL_CODES } = require("../utils/educationHelper");
 
 
+const {
+  LOCATION_CODES, STREAM_CODES, GENDER_CODES, CATEGORY_CODES,
+  MARITAL_STATUS_CODES, PWD_CATEGORIES, NCC_CERTIFICATES, EXPERIENCE_STATUS
+} = require("../utils/constants");
+
 const UserSignupSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String },
@@ -16,14 +21,41 @@ const UserSignupSchema = new mongoose.Schema({
   googleId: { type: String },
   avatar: { type: String },
  
+  // Education using standard LEVEL CODES from helper and STREAM CODES from constants
   education: {
     levels: { type: [{ type: String, enum: EDUCATION_LEVEL_CODES }], default: [] },
-    stream: { type: [String], default: [] },
-    specialization: { type: [String], default: [] },
+    streamCodes: { type: [{ type: String, enum: STREAM_CODES }], default: [] },
+    percentage: { type: Number, min: 0, max: 100, default: null },
+    isFinalYearStudent: { type: Boolean, default: false }
   },
-  preferredLocations: { type: [String], default: ["all india"] },
-  category: { type: String, lowercase: true },
-  gender: { type: String, default: "any", lowercase: true },
+  
+  // High-Speed Enums
+  preferredLocations: { type: [{ type: String, enum: LOCATION_CODES, uppercase: true }], default: ["ALL_INDIA"] },
+  domicileState: { type: String, enum: LOCATION_CODES, default: "ALL_INDIA", uppercase: true },
+  category: { type: String, enum: CATEGORY_CODES, uppercase: true },
+  gender: { type: String, enum: GENDER_CODES, default: "ANY", uppercase: true },
+  maritalStatus: { type: String, enum: MARITAL_STATUS_CODES, default: "UNMARRIED", uppercase: true },
+  
+  // Specific Govt Quotas & Relaxations
+  isPwD: { type: Boolean, default: false },
+  pwdCategory: { type: String, enum: PWD_CATEGORIES, default: "NONE", uppercase: true },
+  isExServiceman: { type: Boolean, default: false },
+  yearsOfService: { type: Number, default: 0 },
+  isDepartmentalCandidate: { type: Boolean, default: false }, // Govt Employee
+  isSportsperson: { type: Boolean, default: false },
+  nccCertificate: { type: String, enum: NCC_CERTIFICATES, default: "NONE", uppercase: true },
+  
+  // UPSC Attempt Limiter
+  pastUPSCAttempts: { type: Number, default: 0 },
+
+  // Tech / Physical Skills
+  hasTypingSkill: { type: Boolean, default: false },
+  hasShorthandSkill: { type: Boolean, default: false },
+  
+  // Experience Status
+  experienceStatus: { type: String, enum: EXPERIENCE_STATUS, default: "FRESHER", uppercase: true },
+  
+  // Flexible Arrays for UI mapping
   organizationTypes: { type: [String], default: [] },
   interests: { type: [String], default: [] },
   dob: { type: Date },

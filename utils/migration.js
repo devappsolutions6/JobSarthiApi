@@ -104,12 +104,35 @@ async function runEducationCodeMigration() {
     console.warn("⚠️ [EduMigration] Error restoring legacy eligibility:", restoreErr.message);
   }
 
-  const allJobs = await Job.find({ "eligibility.posts.0": { $exists: true } }).lean();
+  const allJobs = await Job.find({
+    $or: [
+      { "eligibility.posts.0": { $exists: true } },
+      { "eligibility.education.0": { $exists: true } }
+    ]
+  }).lean();
   let jobEduUpdated = 0;
   for (const job of allJobs) {
     let modified = false;
-    const posts = (job.eligibility?.posts || []).map(post => {
-      const education = (post.education || []).map(edu => {
+    
+    let posts = undefined;
+    if (job.eligibility?.posts) {
+      posts = (job.eligibility.posts || []).map(post => {
+        const education = (post.education || []).map(edu => {
+          const currentCode = edu.levelCode;
+          const newCode = normalizeDegreeToLevelCode(edu.level || edu.degree || currentCode);
+          if (currentCode !== newCode) {
+            modified = true;
+            return { ...edu, levelCode: newCode };
+          }
+          return edu;
+        });
+        return { ...post, education };
+      });
+    }
+
+    let education = undefined;
+    if (job.eligibility?.education) {
+      education = (job.eligibility.education || []).map(edu => {
         const currentCode = edu.levelCode;
         const newCode = normalizeDegreeToLevelCode(edu.level || edu.degree || currentCode);
         if (currentCode !== newCode) {
@@ -118,10 +141,13 @@ async function runEducationCodeMigration() {
         }
         return edu;
       });
-      return { ...post, education };
-    });
+    }
+
     if (modified) {
-      await Job.updateOne({ _id: job._id }, { $set: { "eligibility.posts": posts } });
+      const updateFields = {};
+      if (posts) updateFields["eligibility.posts"] = posts;
+      if (education) updateFields["eligibility.education"] = education;
+      await Job.updateOne({ _id: job._id }, { $set: updateFields });
       jobEduUpdated++;
     }
   }
@@ -196,8 +222,25 @@ async function runTokenCasingMigration() {
     const domLC   = lcArr(j.jobDomains);
     // Eligibility stream/specialization for scoring
     let eduModified = false;
-    const posts = (j.eligibility?.posts || []).map(post => {
-      const education = (post.education || []).map(edu => {
+    let posts = undefined;
+    if (j.eligibility?.posts) {
+      posts = (j.eligibility.posts || []).map(post => {
+        const education = (post.education || []).map(edu => {
+          const strLC  = lc(edu.stream);
+          const specLC = lc(edu.specialization);
+          if (strLC !== edu.stream || specLC !== edu.specialization) {
+            eduModified = true;
+            return { ...edu, stream: strLC, specialization: specLC };
+          }
+          return edu;
+        });
+        return { ...post, education };
+      });
+    }
+
+    let education = undefined;
+    if (j.eligibility?.education) {
+      education = (j.eligibility.education || []).map(edu => {
         const strLC  = lc(edu.stream);
         const specLC = lc(edu.specialization);
         if (strLC !== edu.stream || specLC !== edu.specialization) {
@@ -206,13 +249,16 @@ async function runTokenCasingMigration() {
         }
         return edu;
       });
-      return { ...post, education };
-    });
+    }
+
     if (JSON.stringify(tagsLC) !== JSON.stringify(j.tags))            update.tags = tagsLC;
     if (JSON.stringify(kwLC)   !== JSON.stringify(j.searchKeywords))  update.searchKeywords = kwLC;
     if (locLC !== j.location)                                          update.location = locLC;
     if (JSON.stringify(domLC)  !== JSON.stringify(j.jobDomains))      update.jobDomains = domLC;
-    if (eduModified)                                                   update["eligibility.posts"] = posts;
+    if (eduModified) {
+      if (posts) update["eligibility.posts"] = posts;
+      if (education) update["eligibility.education"] = education;
+    }
     if (Object.keys(update).length > 0) {
       await Job.updateOne({ _id: j._id }, { $set: update });
       jobsFixed++;
@@ -415,15 +461,25 @@ async function runSeedingAndMigration() {
         isModified = true;
       }
 
-      // B. Normalize educational levelCodes under eligibility.posts[].education
-      if (job.eligibility?.posts && job.eligibility.posts.length > 0) {
-        for (const post of job.eligibility.posts) {
-          if (post.education && post.education.length > 0) {
-            for (const edu of post.education) {
-              if (!edu.levelCode) {
-                edu.levelCode = normalizeDegreeToLevelCode(edu.level || edu.degree);
-                isModified = true;
+      // B. Normalize educational levelCodes
+      if (job.eligibility) {
+        if (job.eligibility.posts && job.eligibility.posts.length > 0) {
+          for (const post of job.eligibility.posts) {
+            if (post.education && post.education.length > 0) {
+              for (const edu of post.education) {
+                if (!edu.levelCode) {
+                  edu.levelCode = normalizeDegreeToLevelCode(edu.level || edu.degree);
+                  isModified = true;
+                }
               }
+            }
+          }
+        }
+        if (job.eligibility.education && job.eligibility.education.length > 0) {
+          for (const edu of job.eligibility.education) {
+            if (!edu.levelCode) {
+              edu.levelCode = normalizeDegreeToLevelCode(edu.level || edu.degree);
+              isModified = true;
             }
           }
         }

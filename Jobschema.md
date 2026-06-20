@@ -35,6 +35,24 @@ To ensure exact matching in the recommendation engine and prevent server crashes
 
 ---
 
+## 🏛️ Strict Indian Govt Exam Enums (`utils/constants.js`)
+
+To ensure maximum O(1) performance and accurate Indian Govt Exam matching, we use explicit `enum` arrays instead of free-text strings.
+
+**`LOCATION_CODES`**
+`"ALL_INDIA", "UP", "MH", "DL", "BR", "RJ", ...` (State Abbreviations)
+
+**`STREAM_CODES`**
+`"STR_ANY", "STR_ENG_CS_IT", "STR_ENG_MECH", "STR_ENG_CIVIL", "STR_ENG_ELEC", "STR_ENG_ANY", "STR_SCI_BIO", "STR_SCI_CHEM", "STR_SCI_PHY", "STR_SCI_AGRI", "STR_SCI_ANY", "STR_COMMERCE", "STR_ARTS", "STR_LAW", "STR_MEDICAL", "STR_NURSING_PHARMA", "STR_MANAGEMENT", "STR_EDUCATION"`
+
+**`GENDER_CODES`**
+`"MALE", "FEMALE", "TRANSGENDER", "ANY"`
+
+**`MARITAL_STATUS_CODES`**
+`"UNMARRIED", "MARRIED", "WIDOWED", "DIVORCED"`
+
+---
+
 ## 💼 Standard Job Domains (`jobDomains`)
 
 The `jobDomains` array field should only contain the following standard values:
@@ -52,16 +70,50 @@ The `jobDomains` array field should only contain the following standard values:
 
 ---
 
+## 🗺️ State-Level Jobs and Domicile Matching Rules
+
+For state-level jobs (where `"State"` or `"state"` is included in `jobDomains` or `locationCodes` restricts it to specific state abbreviations), strict domicile matching is enforced by both the recommendation engine and the frontend scoring system:
+* **`domicileRequired`**: Stores the required state abbreviation code (e.g., `"BR"`, `"UP"`). If populated, candidates whose `domicileState` does not match this value are strictly ineligible (Match Score = 0).
+* **`locationCodes`**: Contains the target states. If a job is state-level and doesn't permit `"ALL_INDIA"`, candidates must have a matching domicile state in their profile to qualify.
+* **`stateEligibility`**: Contains allowed states for the recruitment.
+
+If a state job is mismatached against the user's domicile state, the candidate is marked as completely ineligible instead of just getting a lower matching score.
+
+---
+
 ## 🗂️ Multi-Post Jobs (Parent/Child Relationship)
 
 **CRITICAL RULE:** We no longer store multiple posts inside a nested `eligibility.posts` array. 
 If a single official notification contains multiple distinct posts (e.g., "Assistant Superintendent" and "Warehouse Assistant"), you must create **MULTIPLE INDEPENDENT JSON DOCUMENTS** in the database, one for each post. 
 
 These individual post documents act as separate "cards" on the frontend but are linked together using the following fields:
-* **`notificationGroupId`**: The common master job code (e.g., `OSWC-2026-ASST`). All sub-jobs from the same notification MUST share this exact ID.
+* **`notificationGroupId`**: The `ObjectId` of the primary post (`isPrimaryPost: true`). All sub-jobs from the same notification MUST share this exact ID.
 * **`masterTitle`**: The full title of the official notification (shared exactly across all sub-jobs).
 * **`jobCode` & `urlTitle`**: Must be unique for each sub-job. We append `-P1`, `-P2`, etc., to the master codes.
 * **`title`**: Should be the specific short name of the individual post (e.g., "Assistant Superintendent").
+
+---
+
+## 💵 Pay Scale & 7th Pay Commission Salary Details
+
+To enable the interactive **7th Pay Commission Salary & Allowance Calculator** on job details pages, you must populate pay/salary information in the database.
+
+### 1. Pay Scale Structure
+Specify pay level details inside `vacancies.breakup[]` or `salaryRange`:
+* **`vacancies.breakup[].payScale`**:
+  * **`level`** *(string)*: Explicit pay level name matching the 7th CPC (e.g., `"Level 7"`, `"Level 10"`, `"CPC Level 4"`).
+  * **`min`** *(number)*: Minimum basic starting pay (e.g., `44900` for Level 7).
+  * **`max`** *(number)*: Maximum basic pay (e.g., `142400` for Level 7).
+  * **`currency`** *(string)*: Defaults to `"INR"`.
+* **`salaryRange`**:
+  * **`min`** *(number)*: Minimum salary. Used as fallback basic starting pay if `payScale` is not defined in vacancy breakup.
+  * **`max`** *(number)*: Maximum salary.
+
+### 2. Visibility & Auto-Detection Logic
+The salary calculator automatically determines if it should display and which level to show:
+1. **Explicit Level Parsing**: First checks `job.vacancies.breakup[0].payScale.level`. It extracts the digits (e.g. `"Level 7"` ➔ `7`) to set the default Level.
+2. **Closest Match**: If `level` is missing but `payScale.min` (or `job.salaryRange.min`) is provided, it finds the closest matching starting basic pay from the standard 7th CPC Pay Matrix.
+3. **No Calculator Condition**: If **both** level and minimum basic salary info are missing in the database, the Salary Calculator is hidden completely. We do **not** default to Level 7.
 
 ---
 
@@ -85,6 +137,7 @@ This is the main card. Notice `isPrimaryPost: true`.
 
 ```javascript
 {
+  "_id": "650a2b5e4f1a2c001c8e4d2a",
   "title": "School Teacher (Class 1 to 5)",
   "jobCode": "BPSC-TRE-4.0-2026-P1",
   "department": "Bihar Education Department",
@@ -93,7 +146,16 @@ This is the main card. Notice `isPrimaryPost: true`.
     "state",
     "teaching"
   ],
-  "location": "bihar",
+  "locationCodes": [
+    "BR"
+  ],
+  "domicileRequired": "BR",
+  "maritalStatusAllowed": [
+    "UNMARRIED",
+    "MARRIED",
+    "WIDOWED",
+    "DIVORCED"
+  ],
   "description": "Bihar Public Service Commission (BPSC) has released a short notice for TRE 4.0 School Teacher Recruitment 2026 with approximately 44,000+ vacancies across Primary (Class 1-5), Middle (Class 6-8), Secondary TGT (Class 9-10), and Senior Secondary PGT (Class 11-12) levels. Candidates with B.Ed and valid CTET/BTET/STET qualification are eligible. Age calculated as on 01 August 2025.",
   "isActive": true,
   "vacancies": {
@@ -118,7 +180,19 @@ This is the main card. Notice `isPrimaryPost: true`.
       "women": 0,
       "exServicemen": 0,
       "pwd": 0
-    }
+    },
+    "breakup": [
+      {
+        "name": "School Teacher (Class 1 to 5)",
+        "posts": 10778,
+        "payScale": {
+          "level": "Level 6",
+          "min": 35400,
+          "max": 112400,
+          "currency": "INR"
+        }
+      }
+    ]
   },
   "eligibility": {
     "age": {
@@ -129,8 +203,7 @@ This is the main card. Notice `isPrimaryPost: true`.
       {
         "degree": "Bachelor's Degree",
         "levelCode": "EDU_GRAD",
-        "stream": "Any",
-        "specialization": null,
+        "streamCodes": ["STR_ANY"],
         "minMarks": 50,
         "required": true,
         "_id": "6a1598cc43e313624c31900c"
@@ -138,8 +211,7 @@ This is the main card. Notice `isPrimaryPost: true`.
       {
         "degree": "B.Ed",
         "levelCode": "EDU_GRAD",
-        "stream": "Education",
-        "specialization": null,
+        "streamCodes": ["STR_EDUCATION"],
         "minMarks": null,
         "required": true,
         "_id": "6a1598cc43e313624c31900d"
@@ -181,6 +253,23 @@ This is the main card. Notice `isPrimaryPost: true`.
       "CTET Paper I OR BTET Paper I Qualified"
     ],
     "skills": [],
+    "generalRequirements": [
+      "Candidates must be domicile of Bihar or fulfill eligibility as per BPSC norms",
+      "CTET / BTET / STET qualification mandatory as per post level",
+      "Age calculated as on 01 August 2025",
+      "Post-wise vacancy split will be available in official detailed notification on bpsc.bih.nic.in"
+    ],
+    "minimumPercentageRequired": 50,
+    "allowsFinalYearStudents": true,
+    "requiresTyping": false,
+    "requiresShorthand": false,
+    "nccBonusAvailable": false,
+    "sportsQuotaAvailable": false,
+    "maxAttempts": {
+      "UR": 6,
+      "OBC": 9,
+      "SCST": 99
+    }
     "generalRequirements": [
       "Candidates must be domicile of Bihar or fulfill eligibility as per BPSC norms",
       "CTET / BTET / STET qualification mandatory as per post level",
@@ -393,8 +482,6 @@ This is the main card. Notice `isPrimaryPost: true`.
     "Hindi",
     "English"
   ],
-  "isFeatured": false,
-  "isPinned": false,
   "meta": {
     "dataCompleteness": "full",
     "lastVerifiedAt": "2026-05-19T10:33:41.303Z",
@@ -402,7 +489,6 @@ This is the main card. Notice `isPrimaryPost: true`.
     "notes": "CRITICAL: Date fields must be valid MongoDB Date objects in the DB. status field must be explicitly defined as 'active'."
   },
   "organization": "",
-  "popularityScore": 0,
   "postType": "regular",
   "salaryRange": {
     "min": null,
@@ -411,7 +497,6 @@ This is the main card. Notice `isPrimaryPost: true`.
     "unit": "monthly",
     "note": ""
   },
-  "saveCount": 0,
   "shortDescription": "BPSC School Teacher TRE 4.0 Recruitment 2026 – 44000+ Primary, Middle, TGT & PGT Posts...",
   "stateEligibility": [
     "Bihar"
@@ -421,10 +506,15 @@ This is the main card. Notice `isPrimaryPost: true`.
     "Teaching"
   ],
   "urlTitle": "bpsc-school-teacher-tre-4-recruitment-2026-44000-posts-p1",
-  "viewCount": 0,
-  "relatedJobs": [],
+  "relatedJobs": [
+    {
+      "jobId": "650a2b5e4f1a2c001c8e4d2b",
+      "title": "Middle School Teacher (Class 6 to 8)",
+      "vacancies": 8583
+    }
+  ],
   "isRecommendationProcessed": true,
-  "notificationGroupId": "BPSC-TRE-4.0-2026",
+  "notificationGroupId": "650a2b5e4f1a2c001c8e4d2a",
   "isPrimaryPost": true,
   "masterTitle": "BPSC School Teacher TRE 4.0 Recruitment 2026 – 44000+ Primary, Middle, TGT & PGT Posts"
 }
@@ -436,6 +526,7 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
 
 ```javascript
 {
+  "_id": "650a2b5e4f1a2c001c8e4d2b",
   "title": "Middle School Teacher (Class 6 to 8)",
   "jobCode": "BPSC-TRE-4.0-2026-P2",
   "department": "Bihar Education Department",
@@ -469,7 +560,19 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
       "women": 0,
       "exServicemen": 0,
       "pwd": 0
-    }
+    },
+    "breakup": [
+      {
+        "name": "Middle School Teacher (Class 6 to 8)",
+        "posts": 8583,
+        "payScale": {
+          "level": "Level 7",
+          "min": 44900,
+          "max": 142400,
+          "currency": "INR"
+        }
+      }
+    ]
   },
   "eligibility": {
     "age": {
@@ -742,8 +845,6 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "Hindi",
     "English"
   ],
-  "isFeatured": false,
-  "isPinned": false,
   "meta": {
     "dataCompleteness": "full",
     "lastVerifiedAt": "2026-05-19T10:33:41.303Z",
@@ -751,7 +852,6 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "notes": "CRITICAL: Date fields must be valid MongoDB Date objects in the DB. status field must be explicitly defined as 'active'."
   },
   "organization": "",
-  "popularityScore": 0,
   "postType": "regular",
   "salaryRange": {
     "min": null,
@@ -760,7 +860,6 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "unit": "monthly",
     "note": ""
   },
-  "saveCount": 0,
   "shortDescription": "BPSC School Teacher TRE 4.0 Recruitment 2026 – 44000+ Primary, Middle, TGT & PGT Posts...",
   "stateEligibility": [
     "Bihar"
@@ -770,10 +869,9 @@ This is the sub-post card. Notice it shares the same `notificationGroupId` and `
     "Teaching"
   ],
   "urlTitle": "bpsc-school-teacher-tre-4-recruitment-2026-44000-posts-p2",
-  "viewCount": 0,
   "relatedJobs": [],
   "isRecommendationProcessed": true,
-  "notificationGroupId": "BPSC-TRE-4.0-2026",
+  "notificationGroupId": "650a2b5e4f1a2c001c8e4d2a",
   "isPrimaryPost": false,
   "masterTitle": "BPSC School Teacher TRE 4.0 Recruitment 2026 – 44000+ Primary, Middle, TGT & PGT Posts"
 }

@@ -110,19 +110,35 @@ async function runStartupMigration() {
         const streamsSet = new Set();
         const specSet = new Set();
         
-        if (job.eligibility && job.eligibility.posts) {
-          job.eligibility.posts.forEach((p) => {
-            if (p.education) {
-              p.education.forEach((e) => {
-                if (e.stream && e.stream.trim().toLowerCase() !== "any") {
-                  streamsSet.add(e.stream.trim().toLowerCase());
-                }
-                if (e.specialization && e.specialization.trim().toLowerCase() !== "any") {
-                  specSet.add(e.specialization.trim().toLowerCase());
-                }
-              });
-            }
-          });
+        if (job.eligibility) {
+          if (job.eligibility.posts) {
+            job.eligibility.posts.forEach((p) => {
+              if (p.education) {
+                p.education.forEach((e) => {
+                  if (e.stream && e.stream.trim().toLowerCase() !== "any") {
+                    streamsSet.add(e.stream.trim().toLowerCase());
+                  }
+                  if (e.specialization && e.specialization.trim().toLowerCase() !== "any") {
+                    specSet.add(e.specialization.trim().toLowerCase());
+                  }
+                });
+              }
+            });
+          } else if (job.eligibility.education) {
+            job.eligibility.education.forEach((e) => {
+              if (e.stream && e.stream.trim().toLowerCase() !== "any") {
+                streamsSet.add(e.stream.trim().toLowerCase());
+              }
+              if (e.streamCodes) {
+                e.streamCodes.forEach((code) => {
+                  streamsSet.add(code.toLowerCase());
+                });
+              }
+              if (e.specialization && e.specialization.trim().toLowerCase() !== "any") {
+                specSet.add(e.specialization.trim().toLowerCase());
+              }
+            });
+          }
         }
         setQuery.streams = Array.from(streamsSet);
         setQuery.specializations = Array.from(specSet);

@@ -13,6 +13,7 @@ const {
   searchJobs,
   eligibilityCheckController,
 } = require("../controller/webController");
+const { getRecruitmentPulse } = require("../controller/pulseController");
 
 const { signupLimiter, loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
 const {
@@ -61,6 +62,7 @@ router.post("/notifications/test-push", testNotification);
 router.get("/location/guess", require("../controller/webController").guessLocationController);
 router.get("/search", searchJobs);
 router.post("/eligibility-check", eligibilityCheckController);
+router.get("/pulse", getRecruitmentPulse);
 router.get("/getJobs", getJobs);
 router.get("/hompageJobs", getHomePageJobs);
 router.get("/getJobs/:id", getJobById);

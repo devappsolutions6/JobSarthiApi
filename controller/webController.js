@@ -72,7 +72,7 @@ const getJobById = async (req, res) => {
     const { id } = req.params;
   
 
-    const job = await JobsSchemaDatas.findById(id);
+    const job = await JobsSchemaDatas.findById(id).populate("notificationGroupId", "title urlTitle");
 
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
@@ -102,7 +102,6 @@ const getHomePageJobs = async (req, res) => {
     
         const filter = {
           status: sort === "latest" ? { $in: ["active", "upcoming"] } : "active",
-          isPrimaryPost: { $ne: false },
           $or: [
             { "importantDates.applyEnd.date": null },
             { "importantDates.applyEnd.date": { $exists: false } },
@@ -119,6 +118,10 @@ const getHomePageJobs = async (req, res) => {
           "importantDates.applyEnd": 1,
           createdAt: 1,
           conductingBody: 1,
+          eligibility: 1,
+          locationCodes: 1,
+          domicileRequired: 1,
+          recommendationTargets: 1,
         };
 
         let jobsPromise;
@@ -132,7 +135,6 @@ const getHomePageJobs = async (req, res) => {
 
           countFilter = {
             status: "active",
-            isPrimaryPost: { $ne: false },
             $or: [
               {
                 "importantDates.applyEnd.date": {
@@ -586,7 +588,7 @@ const eligibilityCheckController = async (req, res) => {
     const eligibleCodes = getEligibleLevelCodes(educationLevel);
     if (eligibleCodes.length > 0) {
       andConditions.push({
-        "eligibility.posts.education.levelCode": { $in: eligibleCodes },
+        "eligibility.education.levelCode": { $in: eligibleCodes },
       });
     }
 
@@ -598,22 +600,47 @@ const eligibilityCheckController = async (req, res) => {
 
     // Age filter (with category relaxation)
     if (userAge !== null) {
+      const dobStr = dob ? dob.substring(0, 10) : "";
       andConditions.push({
-        $or: [
-          { "ageCriteria.numberBased.min": { $exists: false } },
-          { "ageCriteria.numberBased.max": { $exists: false } },
-          { "ageCriteria.numberBased.min": null },
-          { "ageCriteria.numberBased.max": null },
+        $and: [
+          // 1. Min age check
           {
-            "ageCriteria.numberBased.min": { $lte: userAge },
-            $expr: {
-              $gte: [
-                { $add: [{ $ifNull: ["$ageCriteria.numberBased.max", 99] }, categoryRelaxation] },
-                userAge,
-              ],
-            },
+            $or: [
+              { "ageCriteria.numberBased.min": { $in: [null, undefined] } },
+              { "ageCriteria.numberBased.min": { $exists: false } },
+              { "ageCriteria.numberBased.min": { $lte: userAge } }
+            ]
           },
-        ],
+          // 2. Max age check
+          {
+            $or: [
+              { "ageCriteria.numberBased.max": { $in: [null, undefined] } },
+              { "ageCriteria.numberBased.max": { $exists: false } },
+              {
+                $expr: {
+                  $gte: [
+                    { $add: [{ $ifNull: ["$ageCriteria.numberBased.max", 99] }, categoryRelaxation] },
+                    userAge,
+                  ],
+                }
+              }
+            ]
+          },
+          // 3. DOB based check (if applicable)
+          {
+            $or: [
+              { "ageCriteria.type": { $nin: ["DOB", "dob_based"] } },
+              {
+                "ageCriteria.dobBased.bornBetweenStart": { $lte: dobStr },
+                "ageCriteria.dobBased.bornBetweenEnd": { $gte: dobStr }
+              },
+              {
+                "ageCriteria.dobBased.from": { $lte: dob },
+                "ageCriteria.dobBased.to": { $gte: dob }
+              }
+            ]
+          }
+        ]
       });
     }
 

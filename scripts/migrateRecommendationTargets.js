@@ -35,17 +35,13 @@ async function migrateRecommendationTargets() {
       let specSet = new Set();
 
       // 1. Education
-      if (job.eligibility?.posts) {
-        for (const post of job.eligibility.posts) {
-          if (post.education) {
-            for (const edu of post.education) {
-              const rank = EDUCATION_RANKS[edu.levelCode] || 99;
-              if (rank < minEduRank) minEduRank = rank;
-              
-              if (edu.stream && edu.stream.trim().toLowerCase() !== "any") streamsSet.add(edu.stream.trim().toLowerCase());
-              if (edu.specialization && edu.specialization.trim().toLowerCase() !== "any") specSet.add(edu.specialization.trim().toLowerCase());
-            }
-          }
+      if (job.eligibility?.education) {
+        for (const edu of job.eligibility.education) {
+          const rank = EDUCATION_RANKS[edu.levelCode] || 99;
+          if (rank < minEduRank) minEduRank = rank;
+          
+          if (edu.stream && edu.stream.trim().toLowerCase() !== "any") streamsSet.add(edu.stream.trim().toLowerCase());
+          if (edu.specialization && edu.specialization.trim().toLowerCase() !== "any") specSet.add(edu.specialization.trim().toLowerCase());
         }
       }
       if (minEduRank === 99) minEduRank = 0; // Default to 0 if no education found
@@ -55,23 +51,22 @@ async function migrateRecommendationTargets() {
       let categoriesSet = new Set();
       let hasVacancyBreakup = false;
 
-      if (job.vacancies?.breakup && job.vacancies.breakup.length > 0) {
+      if (job.vacancies && (job.vacancies.genderWise || job.vacancies.categoryWise)) {
         hasVacancyBreakup = true;
-        for (const post of job.vacancies.breakup) {
-          // Genders
-          if (post.genderWise) {
-            const m = post.genderWise.male || post.genderWise.Male || 0;
-            const f = post.genderWise.female || post.genderWise.Female || 0;
-            if (m > 0) gendersSet.add("male");
-            if (f > 0) gendersSet.add("female");
-          }
-          // Categories
-          if (post.categoryWise) {
-            for (const cat of ["gen", "obc", "sc", "st", "ews"]) {
-               if (post.categoryWise[cat] > 0 || post.categoryWise[cat.toUpperCase()] > 0) {
-                 categoriesSet.add(cat);
-               }
-            }
+        const post = job.vacancies;
+        // Genders
+        if (post.genderWise) {
+          const m = post.genderWise.male || post.genderWise.Male || 0;
+          const f = post.genderWise.female || post.genderWise.Female || 0;
+          if (m > 0) gendersSet.add("male");
+          if (f > 0) gendersSet.add("female");
+        }
+        // Categories
+        if (post.categoryWise) {
+          for (const cat of ["gen", "obc", "sc", "st", "ews"]) {
+             if (post.categoryWise[cat] > 0 || post.categoryWise[cat.toUpperCase()] > 0) {
+               categoriesSet.add(cat);
+             }
           }
         }
       }

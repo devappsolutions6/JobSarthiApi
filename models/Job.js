@@ -1,5 +1,9 @@
 const mongoose = require("mongoose");
 const { EDUCATION_LEVEL_CODES } = require("../utils/educationHelper");
+const {
+  LOCATION_CODES, STREAM_CODES, GENDER_CODES, CATEGORY_CODES,
+  MARITAL_STATUS_CODES, PWD_CATEGORIES, NCC_CERTIFICATES
+} = require("../utils/constants");
 
 
 /* ==========================================================
@@ -20,9 +24,9 @@ const JobSchema = new mongoose.Schema(
     },
 
     notificationGroupId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "jobs",
       index: true,
-      trim: true,
     },
 
     urlTitle: {
@@ -82,9 +86,19 @@ const JobSchema = new mongoose.Schema(
 
     jobDomains: [String],
 
-    location: {
+    locationCodes: {
+      type: [{ type: String, enum: LOCATION_CODES }],
+      default: ["ALL_INDIA"],
+    },
+
+    domicileRequired: {
       type: String,
-      default: "All India",
+      enum: LOCATION_CODES,
+    },
+
+    maritalStatusAllowed: {
+      type: [{ type: String, enum: MARITAL_STATUS_CODES }],
+      default: MARITAL_STATUS_CODES,
     },
 
     stateEligibility: [String],
@@ -101,15 +115,7 @@ const JobSchema = new mongoose.Schema(
       default: "active",
     },
 
-    isFeatured: {
-      type: Boolean,
-      default: false,
-    },
 
-    isPinned: {
-      type: Boolean,
-      default: false,
-    },
 
     /* =========================
        💰 SALARY / PAY SCALE
@@ -157,6 +163,7 @@ const JobSchema = new mongoose.Schema(
         type: String,
         default: "number",
       },
+      asOnDate: Date,
       numberBased: {
         min: Number,
         max: Number,
@@ -190,8 +197,10 @@ const JobSchema = new mongoose.Schema(
             type: String,
             enum: EDUCATION_LEVEL_CODES,
           },
-          stream: String,
-          specialization: String,
+          streamCodes: {
+            type: [{ type: String, enum: STREAM_CODES }],
+            default: []
+          },
           minMarks: Number,
           required: {
             type: Boolean,
@@ -216,6 +225,18 @@ const JobSchema = new mongoose.Schema(
       certifications: [String],
       skills: [String],
       generalRequirements: [String],
+      
+      minimumPercentageRequired: { type: Number, min: 0, max: 100, default: null },
+      allowsFinalYearStudents: { type: Boolean, default: false },
+      requiresTyping: { type: Boolean, default: false },
+      requiresShorthand: { type: Boolean, default: false },
+      nccBonusAvailable: { type: Boolean, default: false },
+      sportsQuotaAvailable: { type: Boolean, default: false },
+      maxAttempts: {
+        UR: Number,
+        OBC: Number,
+        SCST: Number
+      },
     },
 
     /* =========================
@@ -397,8 +418,8 @@ const JobSchema = new mongoose.Schema(
        ========================== */
     recommendationTargets: {
       minEducationRank: { type: Number, default: 0 },
-      eligibleStreams: [String],
-      eligibleSpecializations: [String],
+      streamCodes: [{ type: String, enum: STREAM_CODES }],
+      locationCodes: [{ type: String, enum: LOCATION_CODES }],
       age: {
         asOnDate: Date,
         min: { type: Number, default: 0 },
@@ -406,8 +427,8 @@ const JobSchema = new mongoose.Schema(
         maxObc: { type: Number, default: 99 },
         maxScSt: { type: Number, default: 99 },
       },
-      genders: [String],
-      categories: [String],
+      genders: [{ type: String, enum: GENDER_CODES }],
+      categories: [{ type: String, enum: CATEGORY_CODES }],
       organizationTypes: [String],
       roles: [String],
       selectionFlags: {
@@ -419,25 +440,14 @@ const JobSchema = new mongoose.Schema(
 
     relatedJobs: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "jobs",
+        jobId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "jobs",
+        },
+        title: String,
+        vacancies: Number,
       },
     ],
-
-    popularityScore: {
-      type: Number,
-      default: 0,
-    },
-
-    viewCount: {
-      type: Number,
-      default: 0,
-    },
-
-    saveCount: {
-      type: Number,
-      default: 0,
-    },
 
     /* =========================
        🛡️ SYSTEM META-DATA
@@ -509,7 +519,7 @@ JobSchema.index({
 
 JobSchema.index({
   status: 1,
-  "eligibility.posts.education.levelCode": 1,
+  "eligibility.education.levelCode": 1,
   location: 1,
 });
 

@@ -42,8 +42,21 @@ const GetSaveData = async (req, res) => {
       data: [{
         education: user.education,
         preferredLocations: user.preferredLocations,
+        domicileState: user.domicileState || "ALL_INDIA",
         category: user.category,
         gender: user.gender,
+        maritalStatus: user.maritalStatus || "UNMARRIED",
+        isPwD: user.isPwD || false,
+        pwdCategory: user.pwdCategory || "NONE",
+        isExServiceman: user.isExServiceman || false,
+        yearsOfService: user.yearsOfService || 0,
+        isDepartmentalCandidate: user.isDepartmentalCandidate || false,
+        isSportsperson: user.isSportsperson || false,
+        nccCertificate: user.nccCertificate || "NONE",
+        pastUPSCAttempts: user.pastUPSCAttempts || 0,
+        hasTypingSkill: user.hasTypingSkill || false,
+        hasShorthandSkill: user.hasShorthandSkill || false,
+        experienceStatus: user.experienceStatus || "FRESHER",
         organizationTypes: user.organizationTypes,
         interests: user.interests,
         dob: user.dob,
@@ -66,11 +79,25 @@ const Savepreferences = async (req, res) => {
 
     const {
       educationLevels = [],
-      educationStreams = [],
-      specializations = [],
-      preferredLocations = ["all india"],
-      category,
-      gender = "any",
+      streamCodes = [],
+      percentage = null,
+      isFinalYearStudent = false,
+      preferredLocations = ["ALL_INDIA"],
+      domicileState = "ALL_INDIA",
+      category = "UR",
+      gender = "ANY",
+      maritalStatus = "UNMARRIED",
+      isPwD = false,
+      pwdCategory = "NONE",
+      isExServiceman = false,
+      yearsOfService = 0,
+      isDepartmentalCandidate = false,
+      isSportsperson = false,
+      nccCertificate = "NONE",
+      pastUPSCAttempts = 0,
+      hasTypingSkill = false,
+      hasShorthandSkill = false,
+      experienceStatus = "FRESHER",
       organizationTypes = [],
       interests = [],
       selectionPreference = "any",
@@ -89,20 +116,34 @@ const Savepreferences = async (req, res) => {
       });
     }
 
-    // Sanitize all free-form token fields to lowercase at write time
-    // so the recommendation engine can do direct equality checks with zero runtime normalization.
+    const up = v => (v && typeof v === "string" ? v.toUpperCase().trim() : v);
+    const upArr = arr => (Array.isArray(arr) ? arr.map(up).filter(Boolean) : []);
     const lc = v => (v && typeof v === "string" ? v.toLowerCase().trim() : v);
     const lcArr = arr => (Array.isArray(arr) ? arr.map(lc).filter(Boolean) : []);
 
     const preferencePayload = {
       education: {
-        levels: educationLevels,                 // already standard codes e.g. "EDU_GRAD"
-        stream: lcArr(educationStreams),
-        specialization: lcArr(specializations),
+        levels: educationLevels,                 // e.g. ["EDU_GRAD"]
+        streamCodes: upArr(streamCodes),         // e.g. ["STR_ENG_CS_IT"]
+        percentage: percentage !== null ? Number(percentage) : null,
+        isFinalYearStudent: Boolean(isFinalYearStudent)
       },
-      preferredLocations: lcArr(preferredLocations),
-      category,
-      gender,
+      preferredLocations: upArr(preferredLocations),
+      domicileState: up(domicileState),
+      category: up(category),
+      gender: up(gender),
+      maritalStatus: up(maritalStatus),
+      isPwD: Boolean(isPwD),
+      pwdCategory: up(pwdCategory),
+      isExServiceman: Boolean(isExServiceman),
+      yearsOfService: Number(yearsOfService),
+      isDepartmentalCandidate: Boolean(isDepartmentalCandidate),
+      isSportsperson: Boolean(isSportsperson),
+      nccCertificate: up(nccCertificate),
+      pastUPSCAttempts: Number(pastUPSCAttempts),
+      hasTypingSkill: Boolean(hasTypingSkill),
+      hasShorthandSkill: Boolean(hasShorthandSkill),
+      experienceStatus: up(experienceStatus),
       organizationTypes: lcArr(organizationTypes),
       interests: lcArr(interests),
       selectionPreference,
@@ -126,8 +167,21 @@ const Savepreferences = async (req, res) => {
       data: {
         education: updatedUser.education,
         preferredLocations: updatedUser.preferredLocations,
+        domicileState: updatedUser.domicileState,
         category: updatedUser.category,
         gender: updatedUser.gender,
+        maritalStatus: updatedUser.maritalStatus,
+        isPwD: updatedUser.isPwD,
+        pwdCategory: updatedUser.pwdCategory,
+        isExServiceman: updatedUser.isExServiceman,
+        yearsOfService: updatedUser.yearsOfService,
+        isDepartmentalCandidate: updatedUser.isDepartmentalCandidate,
+        isSportsperson: updatedUser.isSportsperson,
+        nccCertificate: updatedUser.nccCertificate,
+        pastUPSCAttempts: updatedUser.pastUPSCAttempts,
+        hasTypingSkill: updatedUser.hasTypingSkill,
+        hasShorthandSkill: updatedUser.hasShorthandSkill,
+        experienceStatus: updatedUser.experienceStatus,
         organizationTypes: updatedUser.organizationTypes,
         interests: updatedUser.interests,
         dob: updatedUser.dob,
