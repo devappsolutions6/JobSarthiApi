@@ -313,6 +313,7 @@ const JobCategoryController = async (req, res) => {
       {
         $project: {
           title: 1,
+          masterTitle: 1,
           conductingBody: 1,
           location: 1,
           jobDomains: 1,
@@ -320,6 +321,8 @@ const JobCategoryController = async (req, res) => {
           "importantDates.applyStart": 1,
           "importantDates.applyEnd": 1,
           createdAt: 1,
+          locationCodes: 1,
+          domicileRequired: 1,
         }
       }
     ]);
@@ -649,10 +652,12 @@ const eligibilityCheckController = async (req, res) => {
     const [eligible, jobs] = await Promise.all([
       JobsSchemaDatas.countDocuments(filter),
       JobsSchemaDatas.find(filter, {
-        _id: 1, title: 1, conductingBody: 1, location: 1, jobDomains: 1,
+        _id: 1, title: 1, masterTitle: 1, conductingBody: 1, location: 1, jobDomains: 1,
         "vacancies.total": 1,
         "importantDates.applyStart": 1,
         "importantDates.applyEnd": 1,
+        locationCodes: 1,
+        domicileRequired: 1,
       })
         .sort({ "importantDates.applyEnd": 1, createdAt: -1 })
         .limit(30),

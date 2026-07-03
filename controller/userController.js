@@ -222,21 +222,22 @@ const recommendJobsController = async (req, res) => {
       }
     }
 
-    // Map cached snaps to standard presentation objects (maintains full frontend compatibility)
-    const mappedJobs = recommendations.slice(0, 30).map((job) => ({
-      _id: job.jobId,
-      title: job.title,
-      urlTitle: job.slug,
-      conductingBody: job.organization || "",
-      location: job.location,
-      importantDates: {
-        applyEnd: job.applyEnd,
-      },
-      vacancies: {
-        total: job.vacancies?.total || 0,
-      },
-      relevanceScore: job.score,
-    }));
+    // Fetch full Job documents to populate all necessary fields for the homepage cards
+    const jobIds = recommendations.slice(0, 30).map(r => r.jobId);
+    const jobs = await JobsSchemaDatas.find({ _id: { $in: jobIds } }).lean();
+
+    // Sort jobs in the order of recommendations and map score
+    const jobsMap = new Map(jobs.map(j => [j._id.toString(), j]));
+    const mappedJobs = recommendations.slice(0, 30)
+      .map((r) => {
+        const job = jobsMap.get(r.jobId.toString());
+        if (!job) return null;
+        return {
+          ...job,
+          relevanceScore: r.score,
+        };
+      })
+      .filter(Boolean);
 
     return res.status(200).json({ status: "success", count: mappedJobs.length, data: mappedJobs });
   } catch (error) {
