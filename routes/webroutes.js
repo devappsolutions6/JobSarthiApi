@@ -14,6 +14,9 @@ const {
   eligibilityCheckController,
 } = require("../controller/webController");
 const { getRecruitmentPulse } = require("../controller/pulseController");
+const { getLatestNews, syncNews } = require("../controller/newsController");
+
+
 
 const { signupLimiter, loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
 const {
@@ -73,6 +76,10 @@ router.get("/logout", logutController);
 router.get("/Jobs-category/:type", JobCategoryController);   
 router.get("/exam-calendar", getExamCalendar);
 router.post("/admin/exam-calendar", addExamCalendar);
+router.get("/news", getLatestNews);
+router.post("/admin/news/sync", syncNews);
+
+
 
 // ------------------------------
 // Auth Related Routes

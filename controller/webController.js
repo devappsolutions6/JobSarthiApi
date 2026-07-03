@@ -17,14 +17,21 @@ const { getCache, setCache, fetchCached } = require("../utils/cache");
 
 // getAnnouncementData
 const _getAnnouncement = async (req, res) => {
-
-  
   try {
-    const AllAnnouncementData = await JobsSchemaDatas.aggregate([
-      { $sort: { createdAt: -1 } },
-      { $limit: 10 },
-      { $project: { title: 1, urlTitle: 1, _id: 1 } },
-    ]);
+    const rawJobs = await JobsSchemaDatas.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select("title urlTitle conductingBody")
+      .lean();
+
+    const AllAnnouncementData = rawJobs.map((job) => {
+      const org = job.conductingBody ? `${job.conductingBody} - ` : "";
+      return {
+        _id: job._id,
+        urlTitle: job.urlTitle,
+        title: `${org}${job.title}`,
+      };
+    });
 
     res.status(200).json({
       message: "Announcement Data fetched successfully",

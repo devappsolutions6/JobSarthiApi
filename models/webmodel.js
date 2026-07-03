@@ -14,6 +14,8 @@ const NotificationSubscriptionData = require("./NotificationSubscription");
 const NotificationData = require("./Notification");
 const NotificationCampaignData = require("./NotificationCampaign");
 const UserSyllabusData = require("./UserSyllabus");
+const NewsData = require("./News");
+
 
 module.exports = {
   AnnouncementData,
@@ -29,5 +31,6 @@ module.exports = {
   NotificationData,
   NotificationCampaignData,
   UserSyllabusData,
+  NewsData,
 };
 
