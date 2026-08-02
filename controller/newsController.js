@@ -1,4 +1,4 @@
-const https    = require("https");
+const https    = require("node:https");
 const { NewsData } = require("../models/webmodel");
 
 // ─── RSS helpers ──────────────────────────────────────────────────────────────
@@ -16,16 +16,17 @@ function fetchUrl(url) {
 }
 
 function extractTag(xml, tag) {
-  const re    = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i");
+  const pattern = String.raw`<${tag}[^>]*>([\s\S]*?)<\/${tag}>`;
+  const re    = new RegExp(pattern, "i");
   const match = xml.match(re);
   if (!match) return "";
   return match[1]
-    .replace(/&amp;/g,  "&")
-    .replace(/&lt;/g,   "<")
-    .replace(/&gt;/g,   ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g,  "'")
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replaceAll("&amp;",  "&")
+    .replaceAll("&lt;",   "<")
+    .replaceAll("&gt;",   ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;",  "'")
+    .replaceAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .trim();
 }
 
@@ -56,7 +57,7 @@ function parseRSS(xmlString) {
  */
 const getLatestNews = async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const limit = Math.min(Number.parseInt(req.query.limit, 10) || 20, 50);
     const news  = await NewsData.find({})
       .sort({ pubDate: -1 })
       .limit(limit)
